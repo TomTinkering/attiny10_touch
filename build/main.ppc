@@ -468,7 +468,7 @@ typedef enum uart_state_t {
     START,
     STOP
 } uart_state_t;
-# 43 "main.c"
+# 46 "main.c"
 uint8_t tx[(4)];
 uint8_t rx[(4)];
 
@@ -477,9 +477,18 @@ uart_state_t tx_state;
 
 uint8_t bit_nr;
 uint8_t rx_in;
+uint8_t cur_rx;
+uint8_t cur_tx;
 uint8_t tx_out;
+uint8_t rx_nr_recv;
+uint8_t tx_nr_sent;
+uint8_t cur_rx_pos;
+uint8_t cur_tx_pos;
 
-static inline void handle_uart(void);
+
+
+
+static inline void handle_uart_io(void);
 
 int main(void) {
 
@@ -487,7 +496,7 @@ int main(void) {
 
   while((1)){
 
-      handle_uart();
+      handle_uart_io();
 
 
 
@@ -498,8 +507,78 @@ int main(void) {
 }
 
 
-static inline void handle_uart(void){
-# 84 "main.c"
+static inline void handle_uart_io(void){
+
+
+
+
+
+    switch (rx_state){
+
+    case IDLE:
+        if(rx_in == 0) {
+            rx_state = RECEIVING;
+            rx_nr_recv=0;
+            cur_rx = 0;
+        }
+        break;
+
+    case RECEIVING :
+
+        rx_nr_recv++;
+
+        cur_rx |= (rx_in << rx_nr_recv);
+
+        if(rx_nr_recv == 8){
+            rx_state = STOP;
+        }
+        break;
+
+    case STOP :
+        if(rx_in){
+            rx[cur_rx_pos] = cur_rx;
+            rx_state = IDLE;
+        }
+        break;
+    }
+
+
+
+    switch (tx_state){
+
+    case IDLE:
+        if(cur_tx_pos != 0) {
+            tx_out = (0x00);
+            tx_state = SENDING;
+            tx_nr_sent=0;
+        } else {
+            tx_out = (0xFF);
+        }
+        break;
+
+    case SENDING :
+
+        tx_nr_sent++;
+
+        tx_out |= (cur_tx >> tx_nr_sent) & (0x01);
+
+        if(tx_nr_sent == 8){
+            tx_state = STOP;
+        }
+        break;
+
+    case STOP :
+        tx_out = (0xFF);
+        tx_state = IDLE;
+        break;
+    }
+
+
+
+
+
+
+
 }
 
 
@@ -519,17 +598,21 @@ void init(void){
 
 
     (*(volatile uint16_t *)((0x26) + 0x00)) = ((uint16_t)208);
-# 111 "main.c"
+# 183 "main.c"
     sample_state = (0x00);
 
 }
-# 142 "main.c"
+# 203 "main.c"
+void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_1 (void){
+   cur_meas = (*(volatile uint16_t *)((0x28) + 0x00));
+}
+
+
 void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_6 (void){
 
     (*(volatile uint8_t *)((0x12) + 0x00)) |= (1 << 0);
 
     (*(volatile uint8_t *)((0x01) + 0x00)) &= ~(1 << (2));
-
 
 }
 
@@ -540,7 +623,11 @@ void __vector_5 (void) __attribute__ ((signal,used, externally_visible)) ; void 
 
     rx_in = ((*(volatile uint8_t *)((0x00) + 0x00))) & (1 << (0));
 
-
+    if(tx_out > 0){
+        ((*(volatile uint8_t *)((0x02) + 0x00))) |= (1<<(1));
+    } else {
+        ((*(volatile uint8_t *)((0x02) + 0x00))) &= ~(1<<(1));
+    }
 
     (*(volatile uint16_t *)((0x26) + 0x00)) += ((uint16_t)417);
 

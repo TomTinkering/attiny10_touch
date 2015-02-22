@@ -34,6 +34,9 @@ typedef enum uart_state_t {
 #define UART_RX_PINx   (PINB)
 #define UART_TX_PINx   (PINB)
 
+#define HIGH (0xFF)
+#define LOW  (0x00)
+
 #define UART_SET_START(port,pin) (port &= ~(1<<pin))
 #define UART_SET_STOP(port,pin)  (port |= (1<<pin))
 #define UART_GET_START(port,pin) (~port & (1<<pin))
@@ -48,9 +51,18 @@ uart_state_t tx_state;
 
 uint8_t bit_nr;
 uint8_t rx_in;
+uint8_t cur_rx;
+uint8_t cur_tx;
 uint8_t tx_out;
+uint8_t rx_nr_recv;
+uint8_t tx_nr_sent;
+uint8_t cur_rx_pos;
+uint8_t cur_tx_pos;
 
-static inline void handle_uart(void);
+
+
+
+static inline void handle_uart_io(void);
 
 int main(void) {
 
@@ -58,7 +70,7 @@ int main(void) {
 
   while(TRUE){
 
-      handle_uart();
+      handle_uart_io();
 
 
 
@@ -69,11 +81,71 @@ int main(void) {
 }
 
 
-static inline void handle_uart(void){
+static inline void handle_uart_io(void){
 
     //TODO: error checking here (has the sampling interrupt occured?)
 
     //add sample to state, if byte is complete, store in buffer
+
+    switch (rx_state){
+
+    case IDLE:
+        if(rx_in == 0) { //if 0 was received
+            rx_state = RECEIVING;
+            rx_nr_recv=0;
+            cur_rx = 0;
+        }
+        break;
+
+    case RECEIVING :
+        //increment number received bits
+        rx_nr_recv++;
+        //store received bit
+        cur_rx |= (rx_in << rx_nr_recv);
+        //check if full byte is received
+        if(rx_nr_recv == 8){
+            rx_state = STOP;
+        }
+        break;
+
+    case STOP :
+        if(rx_in){
+            rx[cur_rx_pos] = cur_rx;
+            rx_state = IDLE;
+        }
+        break;
+    }
+
+
+    //handle TX
+    switch (tx_state){
+
+    case IDLE:
+        if(cur_tx_pos != 0) { //if data is waiting
+            tx_out = LOW;
+            tx_state = SENDING;
+            tx_nr_sent=0;
+        } else {
+            tx_out = HIGH;
+        }
+        break;
+
+    case SENDING :
+        //increment number received bits
+        tx_nr_sent++;
+        //store received bit
+        tx_out |= (cur_tx >> tx_nr_sent) & (0x01);
+        //check if full byte is received
+        if(tx_nr_sent == 8){
+            tx_state = STOP;
+        }
+        break;
+
+    case STOP :
+        tx_out = HIGH;
+        tx_state = IDLE;
+        break;
+    }
 
     //determine new output bit
         //if in progress, continue
@@ -127,24 +199,18 @@ void init(void){
 //   asm("reti");
 //}
 
-
-ISR(INT0_vect)
-{
+//external interrupt -> store timer value
+ISR(INT0_vect){
    cur_meas = TCNT0;
 }
 
-
-
-
 //TIM0 overflow handler
-//start new measurement, quit.
 ISR(TIM0_COMPB_vect){
     //enable eternal interrupt
     PCICR |= (1 << PCIE0);
     //set pin to input
     DDRB &= ~(1 << CAP_TOUCH_PIN);
     //disable
-
 }
 
 
@@ -154,7 +220,11 @@ ISR(TIM0_COMPA_vect){
     //store new rx_in value;
     rx_in = UART_RX_PINx & (1 << UART_RX_BIT);
     //write next output bit
-    UART_TX_PORTx = ()
+    if(tx_out > 0){
+        UART_TX_PORTx |= (1<<UART_TX_BIT);
+    } else {
+        UART_TX_PORTx &= ~(1<<UART_TX_BIT);
+    }
     //update interrupt compare value
     OCR0A += OCR_INCREMENT;
 
