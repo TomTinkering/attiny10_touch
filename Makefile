@@ -7,6 +7,7 @@ F_CPU  := 8000000
 
 AVR_PATH = /opt/cross/avr
 
+#makefile tested on avr8-gnu-toolchain-3.4.1.798-linux.any.x86_64.tar.gz
 CC      = $(AVR_PATH)/bin/avr-gcc
 CXX     = $(AVR_PATH)/bin/avr-c++
 OBJCOPY = $(AVR_PATH)/bin/avr-objcopy

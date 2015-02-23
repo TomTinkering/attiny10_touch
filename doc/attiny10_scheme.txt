@@ -1,0 +1,27 @@
+
+Slave scheme :
+ - 19200 BAUD 8N1
+ - frame setup |S|7|6|5|4|3|2|1|0|S| = 10 bits  ->  [7] = Taken, [6] = Button pressed, [5..0] Led Settings
+ - time per frame = 1/19200 * 10 = 52us
+ - on RX[0] send TX[-1]
+
+Master scheme :
+
+ -max 32 slaves / buttons
+ -determine number slaves on startup
+
+ -send "slave cnt" frames
+ -wait 2 frames
+ -repeat
+
+ - data retreived will be 1 set of "slave cnt" frames (= max 32*52 us + 2*52 us) old.
+  
+
+Timer :
+ - run till max (0xFF), reset on overflow (no IRQ)
+ - OCRA increment will automatically overflow correctly
+
+
+
+
+
