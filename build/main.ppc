@@ -468,7 +468,7 @@ typedef enum uart_state_t {
     START,
     STOP
 } uart_state_t;
-# 46 "main.c"
+# 48 "main.c"
 uint8_t tx[(4)];
 uint8_t rx[(4)];
 
@@ -594,26 +594,43 @@ void init(void){
 
     (*(volatile uint8_t *)((0x2E) + 0x00)) = 0x00;
     (*(volatile uint8_t *)((0x2D) + 0x00)) = 0x00;
-    (*(volatile uint8_t *)((0x2B) + 0x00)) = (1<<0) | (1<<1);
+    (*(volatile uint8_t *)((0x2B) + 0x00)) = (1<<0) | (1<<1) | (1<<2);
 
 
     (*(volatile uint16_t *)((0x26) + 0x00)) = ((uint16_t)208);
-# 183 "main.c"
+# 185 "main.c"
     sample_state = (0x00);
 
 }
-# 203 "main.c"
+# 205 "main.c"
 void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_1 (void){
-   cur_meas = (*(volatile uint16_t *)((0x28) + 0x00));
+   (*(volatile uint16_t *)((0x26) + 0x00)) = (*(volatile uint16_t *)((0x28) + 0x00))+(((uint16_t)417) / 2);
+
 }
 
 
-void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_6 (void){
 
-    (*(volatile uint8_t *)((0x12) + 0x00)) |= (1 << 0);
+void __vector_4 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_4 (void){
 
-    (*(volatile uint8_t *)((0x01) + 0x00)) &= ~(1 << (2));
 
+    asm("push r24");
+    asm("ldi r24,lo8(2)");
+    asm("out 1,r24");
+    asm("pop r24");
+    asm("reti");
+}
+
+
+
+void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_6 (void){
+
+
+    asm("push r24");
+
+
+    (*(volatile uint8_t *)((0x2B) + 0x00)) = bit_nr;
+    asm("pop r24");
+    asm("reti");
 }
 
 
@@ -631,4 +648,7 @@ void __vector_5 (void) __attribute__ ((signal,used, externally_visible)) ; void 
 
     (*(volatile uint16_t *)((0x26) + 0x00)) += ((uint16_t)417);
 
+
+
+    (*(volatile uint8_t *)((0x12) + 0x00)) |= (1 << 0);
 }

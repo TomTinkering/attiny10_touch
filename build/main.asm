@@ -15,34 +15,34 @@ __zero_reg__ = 17
 init:
 .LFB8:
 	.file 1 "main.c"
-	.loc 1 159 0
+	.loc 1 161 0
 	.cfi_startproc
 /* prologue: function */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 162 0
-	out 55-0,__zero_reg__
-	.loc 1 163 0
-	out 57-0,__zero_reg__
 	.loc 1 164 0
+	out 55-0,__zero_reg__
+	.loc 1 165 0
+	out 57-0,__zero_reg__
+	.loc 1 166 0
 	out 54-0,__zero_reg__
-	.loc 1 169 0
-	out 46-0,__zero_reg__
-	.loc 1 170 0
-	out 45-0,__zero_reg__
 	.loc 1 171 0
-	ldi r24,lo8(3)
+	out 46-0,__zero_reg__
+	.loc 1 172 0
+	out 45-0,__zero_reg__
+	.loc 1 173 0
+	ldi r24,lo8(7)
 	out 43-0,r24
-	.loc 1 174 0
+	.loc 1 176 0
 	ldi r24,lo8(208)
 	ldi r25,hi8(208)
 	out 38+1-0,r25
 	out 38-0,r24
-	.loc 1 183 0
+	.loc 1 185 0
 	sts sample_state,__zero_reg__
 /* epilogue start */
-	.loc 1 185 0
+	.loc 1 187 0
 	ret
 	.cfi_endproc
 .LFE8:
@@ -52,40 +52,40 @@ init:
 	.type	main, @function
 main:
 .LFB6:
-	.loc 1 67 0
+	.loc 1 69 0
 	.cfi_startproc
 /* prologue: function */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 69 0
+	.loc 1 71 0
 	rcall init
 .LBB4:
 .LBB5:
-	.loc 1 112 0
+	.loc 1 114 0
 	lds r27,rx_in
-	.loc 1 113 0
+	.loc 1 115 0
 	lds r28,cur_rx_pos
 	ldi r29,lo8(0)
-	.loc 1 104 0
+	.loc 1 106 0
 	mov r18,r27
 	ldi r19,lo8(0)
-	.loc 1 124 0
+	.loc 1 126 0
 	lds r21,cur_tx_pos
 	lds r23,rx_state
 	lds r30,rx_nr_recv
 	lds r26,cur_rx
 	lds r22,tx_state
 	lds r31,tx_nr_sent
-	.loc 1 113 0
+	.loc 1 115 0
 	subi r28,lo8(-(rx))
 	sbci r29,hi8(-(rx))
 	rjmp .L15
 .L12:
-	.loc 1 146 0
+	.loc 1 148 0
 	ldi r22,lo8(0)
 .L15:
-	.loc 1 90 0 discriminator 1
+	.loc 1 92 0 discriminator 1
 	cpi r23,lo8(1)
 	breq .L8
 	cpi r23,lo8(1)
@@ -94,20 +94,20 @@ main:
 	brne .L6
 	rjmp .L16
 .L7:
-	.loc 1 93 0
+	.loc 1 95 0
 	tst r27
 	brne .L6
-	.loc 1 96 0
+	.loc 1 98 0
 	ldi r26,lo8(0)
-	.loc 1 95 0
+	.loc 1 97 0
 	ldi r30,lo8(0)
-	.loc 1 94 0
+	.loc 1 96 0
 	ldi r23,lo8(1)
 	rjmp .L6
 .L8:
-	.loc 1 102 0
-	subi r30,lo8(-(1))
 	.loc 1 104 0
+	subi r30,lo8(-(1))
+	.loc 1 106 0
 	mov r24,r18
 	mov r25,r19
 	mov r16,r30
@@ -117,43 +117,43 @@ main:
 2:	dec r16
 	brpl 1b
 	or r26,r24
-	.loc 1 106 0
+	.loc 1 108 0
 	cpi r30,lo8(8)
 	brne .L6
-	.loc 1 107 0
+	.loc 1 109 0
 	ldi r23,lo8(4)
 	rjmp .L6
 .L16:
-	.loc 1 112 0
+	.loc 1 114 0
 	tst r27
 	breq .L6
-	.loc 1 113 0
+	.loc 1 115 0
 	st Y,r26
-	.loc 1 114 0
+	.loc 1 116 0
 	ldi r23,lo8(0)
 .L6:
-	.loc 1 121 0
+	.loc 1 123 0
 	cpi r22,lo8(2)
 	breq .L11
 	cpi r22,lo8(4)
 	breq .L12
 	tst r22
 	brne .L15
-	.loc 1 124 0
+	.loc 1 126 0
 	tst r21
 	breq .L15
-	.loc 1 127 0
+	.loc 1 129 0
 	ldi r31,lo8(0)
-	.loc 1 126 0
+	.loc 1 128 0
 	ldi r22,lo8(2)
 	rjmp .L15
 .L11:
-	.loc 1 135 0
+	.loc 1 137 0
 	subi r31,lo8(-(1))
-	.loc 1 139 0
+	.loc 1 141 0
 	cpi r31,lo8(8)
 	brne .L15
-	.loc 1 140 0
+	.loc 1 142 0
 	ldi r22,lo8(4)
 	rjmp .L15
 .LBE5:
@@ -166,7 +166,7 @@ main:
 	.type	__vector_1, @function
 __vector_1:
 .LFB9:
-	.loc 1 203 0
+	.loc 1 205 0
 	.cfi_startproc
 	push r17
 .LCFI0:
@@ -191,13 +191,15 @@ __vector_1:
 /* frame size = 0 */
 /* stack size = 5 */
 .L__stack_usage = 5
-	.loc 1 204 0
+	.loc 1 206 0
 	in r24,40-0
 	in r25,40+1-0
-	sts cur_meas+1,r25
-	sts cur_meas,r24
+	subi r24,lo8(-(208))
+	sbci r25,hi8(-(208))
+	out 38+1-0,r25
+	out 38-0,r24
 /* epilogue start */
-	.loc 1 205 0
+	.loc 1 208 0
 	pop r25
 	pop r24
 	pop r16
@@ -208,11 +210,82 @@ __vector_1:
 	.cfi_endproc
 .LFE9:
 	.size	__vector_1, .-__vector_1
+.global	__vector_4
+	.type	__vector_4, @function
+__vector_4:
+.LFB10:
+	.loc 1 212 0
+	.cfi_startproc
+/* prologue: naked */
+/* frame size = 0 */
+/* stack size = 0 */
+.L__stack_usage = 0
+	.loc 1 215 0
+/* #APP */
+ ;  215 "main.c" 1
+	push r24
+ ;  0 "" 2
+	.loc 1 216 0
+ ;  216 "main.c" 1
+	ldi r24,lo8(2)
+ ;  0 "" 2
+	.loc 1 217 0
+ ;  217 "main.c" 1
+	out 1,r24
+ ;  0 "" 2
+	.loc 1 218 0
+ ;  218 "main.c" 1
+	pop r24
+ ;  0 "" 2
+	.loc 1 219 0
+ ;  219 "main.c" 1
+	reti
+ ;  0 "" 2
+/* epilogue start */
+	.loc 1 220 0
+/* #NOAPP */
+	.cfi_endproc
+.LFE10:
+	.size	__vector_4, .-__vector_4
 .global	__vector_6
 	.type	__vector_6, @function
 __vector_6:
-.LFB10:
-	.loc 1 208 0
+.LFB11:
+	.loc 1 224 0
+	.cfi_startproc
+/* prologue: naked */
+/* frame size = 0 */
+/* stack size = 0 */
+.L__stack_usage = 0
+	.loc 1 227 0
+/* #APP */
+ ;  227 "main.c" 1
+	push r24
+ ;  0 "" 2
+	.loc 1 230 0
+/* #NOAPP */
+	lds r24,bit_nr
+	out 43-0,r24
+	.loc 1 231 0
+/* #APP */
+ ;  231 "main.c" 1
+	pop r24
+ ;  0 "" 2
+	.loc 1 232 0
+ ;  232 "main.c" 1
+	reti
+ ;  0 "" 2
+/* epilogue start */
+	.loc 1 233 0
+/* #NOAPP */
+	.cfi_endproc
+.LFE11:
+	.size	__vector_6, .-__vector_6
+.global	__vector_5
+	.type	__vector_5, @function
+__vector_5:
+.LFB12:
+	.loc 1 237 0
 	.cfi_startproc
 	push r17
 .LCFI4:
@@ -225,77 +298,44 @@ __vector_6:
 	in r16,__SREG__
 	push r16
 	ldi __zero_reg__,lo8(0)
-/* prologue: Signal */
-/* frame size = 0 */
-/* stack size = 3 */
-.L__stack_usage = 3
-	.loc 1 210 0
-	sbi 18-0,0
-	.loc 1 212 0
-	cbi 1-0,2
-/* epilogue start */
-	.loc 1 214 0
-	pop r16
-	out __SREG__,r16
-	pop r16
-	pop r17
-	reti
-	.cfi_endproc
-.LFE10:
-	.size	__vector_6, .-__vector_6
-.global	__vector_5
-	.type	__vector_5, @function
-__vector_5:
-.LFB11:
-	.loc 1 218 0
-	.cfi_startproc
-	push r17
-.LCFI6:
-	.cfi_def_cfa_offset 3
-	.cfi_offset 17, -2
-	push r16
-.LCFI7:
-	.cfi_def_cfa_offset 4
-	.cfi_offset 16, -3
-	in r16,__SREG__
-	push r16
-	ldi __zero_reg__,lo8(0)
 	push r24
-.LCFI8:
+.LCFI6:
 	.cfi_def_cfa_offset 5
 	.cfi_offset 24, -4
 	push r25
-.LCFI9:
+.LCFI7:
 	.cfi_def_cfa_offset 6
 	.cfi_offset 25, -5
 /* prologue: Signal */
 /* frame size = 0 */
 /* stack size = 5 */
 .L__stack_usage = 5
-	.loc 1 221 0
+	.loc 1 240 0
 	in r24,0-0
 	andi r24,lo8(1)
 	sts rx_in,r24
-	.loc 1 223 0
+	.loc 1 242 0
 	lds r24,tx_out
 	tst r24
-	breq .L20
-	.loc 1 224 0
+	breq .L21
+	.loc 1 243 0
 	sbi 2-0,1
-	rjmp .L21
-.L20:
-	.loc 1 226 0
-	cbi 2-0,1
+	rjmp .L22
 .L21:
-	.loc 1 229 0
+	.loc 1 245 0
+	cbi 2-0,1
+.L22:
+	.loc 1 248 0
 	in r24,38-0
 	in r25,38+1-0
 	subi r24,lo8(-(417))
 	sbci r25,hi8(-(417))
 	out 38+1-0,r25
 	out 38-0,r24
+	.loc 1 252 0
+	sbi 18-0,0
 /* epilogue start */
-	.loc 1 231 0
+	.loc 1 253 0
 	pop r25
 	pop r24
 	pop r16
@@ -304,7 +344,7 @@ __vector_5:
 	pop r17
 	reti
 	.cfi_endproc
-.LFE11:
+.LFE12:
 	.size	__vector_5, .-__vector_5
 	.comm cur_tx_pos,1,1
 	.comm cur_rx_pos,1,1
@@ -325,15 +365,15 @@ __vector_5:
 	.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
 	.section	.debug_info,"",@progbits
 .Ldebug_info0:
-	.long	0x2f8
+	.long	0x30d
 	.word	0x2
 	.long	.Ldebug_abbrev0
 	.byte	0x4
 	.uleb128 0x1
-	.long	.LASF32
-	.byte	0x1
 	.long	.LASF33
+	.byte	0x1
 	.long	.LASF34
+	.long	.LASF35
 	.long	0
 	.long	0
 	.long	.Ldebug_ranges0+0
@@ -408,16 +448,16 @@ __vector_5:
 	.byte	0x1b
 	.long	0x77
 	.uleb128 0x7
-	.long	.LASF35
+	.long	.LASF36
 	.byte	0x1
-	.byte	0x54
+	.byte	0x56
 	.byte	0x1
 	.byte	0x3
 	.uleb128 0x8
 	.byte	0x1
 	.long	.LASF15
 	.byte	0x1
-	.byte	0x9f
+	.byte	0xa1
 	.byte	0x1
 	.long	.LFB8
 	.long	.LFE8
@@ -427,9 +467,9 @@ __vector_5:
 	.sleb128 2
 	.uleb128 0x9
 	.byte	0x1
-	.long	.LASF36
+	.long	.LASF37
 	.byte	0x1
-	.byte	0x43
+	.byte	0x45
 	.byte	0x1
 	.long	0x42
 	.long	.LFB6
@@ -444,42 +484,50 @@ __vector_5:
 	.long	.LBB4
 	.long	.LBE4
 	.byte	0x1
-	.byte	0x49
+	.byte	0x4b
 	.byte	0
 	.uleb128 0xb
 	.byte	0x1
 	.long	.LASF16
 	.byte	0x1
-	.byte	0xcb
+	.byte	0xcd
 	.byte	0x1
 	.long	.LFB9
 	.long	.LFE9
 	.long	.LLST0
-	.uleb128 0xb
+	.uleb128 0x8
 	.byte	0x1
 	.long	.LASF17
 	.byte	0x1
-	.byte	0xd0
+	.byte	0xd4
 	.byte	0x1
 	.long	.LFB10
 	.long	.LFE10
-	.long	.LLST1
-	.uleb128 0xb
+	.byte	0x3
+	.byte	0x92
+	.uleb128 0x20
+	.sleb128 2
+	.uleb128 0x8
 	.byte	0x1
 	.long	.LASF18
 	.byte	0x1
-	.byte	0xda
+	.byte	0xe0
 	.byte	0x1
 	.long	.LFB11
 	.long	.LFE11
-	.long	.LLST2
-	.uleb128 0xc
+	.byte	0x3
+	.byte	0x92
+	.uleb128 0x20
+	.sleb128 2
+	.uleb128 0xb
+	.byte	0x1
 	.long	.LASF19
 	.byte	0x1
-	.byte	0x12
-	.long	0x49
+	.byte	0xed
 	.byte	0x1
-	.byte	0x1
+	.long	.LFB12
+	.long	.LFE12
+	.long	.LLST1
 	.uleb128 0xc
 	.long	.LASF20
 	.byte	0x1
@@ -489,7 +537,7 @@ __vector_5:
 	.byte	0x1
 	.uleb128 0xd
 	.long	0x30
-	.long	0x161
+	.long	0x169
 	.uleb128 0xe
 	.long	0x54
 	.byte	0x3
@@ -497,82 +545,89 @@ __vector_5:
 	.uleb128 0xf
 	.string	"rx"
 	.byte	0x1
-	.byte	0x2f
-	.long	0x151
+	.byte	0x31
+	.long	0x159
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF21
 	.byte	0x1
-	.byte	0x31
+	.byte	0x33
 	.long	0xa2
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF22
 	.byte	0x1
-	.byte	0x32
+	.byte	0x34
 	.long	0xa2
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF23
 	.byte	0x1
-	.byte	0x35
+	.byte	0x36
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF24
 	.byte	0x1
-	.byte	0x36
+	.byte	0x37
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF25
 	.byte	0x1
-	.byte	0x37
+	.byte	0x38
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF26
 	.byte	0x1
-	.byte	0x38
+	.byte	0x39
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF27
 	.byte	0x1
-	.byte	0x39
+	.byte	0x3a
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF28
 	.byte	0x1
-	.byte	0x3a
+	.byte	0x3b
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF29
 	.byte	0x1
-	.byte	0x3b
+	.byte	0x3c
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
 	.long	.LASF30
 	.byte	0x1
-	.byte	0x3c
+	.byte	0x3d
+	.long	0x30
+	.byte	0x1
+	.byte	0x1
+	.uleb128 0xc
+	.long	.LASF31
+	.byte	0x1
+	.byte	0x3e
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0x10
-	.long	.LASF19
+	.long	.LASF32
 	.byte	0x1
 	.byte	0x12
 	.long	0x49
@@ -592,8 +647,8 @@ __vector_5:
 	.uleb128 0x11
 	.string	"tx"
 	.byte	0x1
-	.byte	0x2e
-	.long	0x151
+	.byte	0x30
+	.long	0x159
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
@@ -601,8 +656,8 @@ __vector_5:
 	.uleb128 0x11
 	.string	"rx"
 	.byte	0x1
-	.byte	0x2f
-	.long	0x151
+	.byte	0x31
+	.long	0x159
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
@@ -610,7 +665,7 @@ __vector_5:
 	.uleb128 0x10
 	.long	.LASF21
 	.byte	0x1
-	.byte	0x31
+	.byte	0x33
 	.long	0xa2
 	.byte	0x1
 	.byte	0x5
@@ -619,88 +674,88 @@ __vector_5:
 	.uleb128 0x10
 	.long	.LASF22
 	.byte	0x1
-	.byte	0x32
+	.byte	0x34
 	.long	0xa2
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	tx_state
 	.uleb128 0x10
-	.long	.LASF31
-	.byte	0x1
-	.byte	0x34
-	.long	0x30
-	.byte	0x1
-	.byte	0x5
-	.byte	0x3
-	.long	bit_nr
-	.uleb128 0x10
 	.long	.LASF23
-	.byte	0x1
-	.byte	0x35
-	.long	0x30
-	.byte	0x1
-	.byte	0x5
-	.byte	0x3
-	.long	rx_in
-	.uleb128 0x10
-	.long	.LASF24
 	.byte	0x1
 	.byte	0x36
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	cur_rx
+	.long	bit_nr
 	.uleb128 0x10
-	.long	.LASF25
+	.long	.LASF24
 	.byte	0x1
 	.byte	0x37
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	cur_tx
+	.long	rx_in
 	.uleb128 0x10
-	.long	.LASF26
+	.long	.LASF25
 	.byte	0x1
 	.byte	0x38
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	tx_out
+	.long	cur_rx
 	.uleb128 0x10
-	.long	.LASF27
+	.long	.LASF26
 	.byte	0x1
 	.byte	0x39
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	rx_nr_recv
+	.long	cur_tx
 	.uleb128 0x10
-	.long	.LASF28
+	.long	.LASF27
 	.byte	0x1
 	.byte	0x3a
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	tx_nr_sent
+	.long	tx_out
 	.uleb128 0x10
-	.long	.LASF29
+	.long	.LASF28
 	.byte	0x1
 	.byte	0x3b
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
-	.long	cur_rx_pos
+	.long	rx_nr_recv
+	.uleb128 0x10
+	.long	.LASF29
+	.byte	0x1
+	.byte	0x3c
+	.long	0x30
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	tx_nr_sent
 	.uleb128 0x10
 	.long	.LASF30
 	.byte	0x1
-	.byte	0x3c
+	.byte	0x3d
+	.long	0x30
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	cur_rx_pos
+	.uleb128 0x10
+	.long	.LASF31
+	.byte	0x1
+	.byte	0x3e
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
@@ -1009,7 +1064,7 @@ __vector_5:
 	.long	0
 	.long	0
 .LLST1:
-	.long	.LFB10
+	.long	.LFB12
 	.long	.LCFI4
 	.word	0x3
 	.byte	0x92
@@ -1022,40 +1077,19 @@ __vector_5:
 	.uleb128 0x20
 	.sleb128 3
 	.long	.LCFI5
-	.long	.LFE10
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 4
-	.long	0
-	.long	0
-.LLST2:
-	.long	.LFB11
 	.long	.LCFI6
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
-	.sleb128 2
+	.sleb128 4
 	.long	.LCFI6
 	.long	.LCFI7
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 3
-	.long	.LCFI7
-	.long	.LCFI8
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 4
-	.long	.LCFI8
-	.long	.LCFI9
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 5
-	.long	.LCFI9
-	.long	.LFE11
+	.long	.LCFI7
+	.long	.LFE12
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
@@ -1087,9 +1121,9 @@ __vector_5:
 	.section	.debug_line,"",@progbits
 .Ldebug_line0:
 	.section	.debug_str,"MS",@progbits,1
-.LASF28:
+.LASF29:
 	.string	"tx_nr_sent"
-.LASF35:
+.LASF36:
 	.string	"handle_uart_io"
 .LASF9:
 	.string	"IDLE"
@@ -1097,23 +1131,23 @@ __vector_5:
 	.string	"init"
 .LASF11:
 	.string	"SENDING"
-.LASF24:
-	.string	"cur_rx"
-.LASF23:
-	.string	"rx_in"
 .LASF25:
+	.string	"cur_rx"
+.LASF24:
+	.string	"rx_in"
+.LASF26:
 	.string	"cur_tx"
-.LASF34:
+.LASF35:
 	.string	"/home/tomv/workspace/attiny10_touch/"
 .LASF1:
 	.string	"unsigned char"
 .LASF6:
 	.string	"long unsigned int"
-.LASF26:
+.LASF27:
 	.string	"tx_out"
 .LASF20:
 	.string	"sample_state"
-.LASF32:
+.LASF33:
 	.string	"GNU C 4.6.2"
 .LASF12:
 	.string	"START"
@@ -1123,41 +1157,43 @@ __vector_5:
 	.string	"uart_state_t"
 .LASF10:
 	.string	"RECEIVING"
-.LASF36:
+.LASF37:
 	.string	"main"
 .LASF13:
 	.string	"STOP"
 .LASF4:
 	.string	"unsigned int"
-.LASF19:
-	.string	"cur_meas"
 .LASF8:
 	.string	"long long unsigned int"
 .LASF2:
 	.string	"uint8_t"
-.LASF29:
+.LASF30:
 	.string	"cur_rx_pos"
+.LASF32:
+	.string	"cur_meas"
 .LASF7:
 	.string	"long long int"
-.LASF33:
+.LASF34:
 	.string	"main.c"
-.LASF31:
+.LASF23:
 	.string	"bit_nr"
-.LASF27:
+.LASF28:
 	.string	"rx_nr_recv"
 .LASF16:
 	.string	"__vector_1"
 .LASF3:
 	.string	"uint16_t"
-.LASF18:
-	.string	"__vector_5"
 .LASF17:
+	.string	"__vector_4"
+.LASF19:
+	.string	"__vector_5"
+.LASF18:
 	.string	"__vector_6"
 .LASF5:
 	.string	"long int"
 .LASF0:
 	.string	"signed char"
-.LASF30:
+.LASF31:
 	.string	"cur_tx_pos"
 .LASF21:
 	.string	"rx_state"

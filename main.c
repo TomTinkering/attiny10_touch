@@ -7,7 +7,7 @@
 #define TIM_OCR_START ((uint16_t)208)
 #define NEW_SAMPLE (0xFF)
 #define OLD_SAMPLE (0x00)
-#define CAP_TOUCH_PIN (PB2) //TODO: set proper pin
+#define CAP_TOUCH_PIN (PIN1) //TODO: set proper pin
 //next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
 #define OCR_INCREMENT ((uint16_t)417)
 
@@ -26,6 +26,9 @@ typedef enum uart_state_t {
     STOP
 } uart_state_t;
 
+#define ISR_OFFSET     (4) //the number of instructions before INT0 is executed
+#define UART_BIT_TIME  ((uint16_t)417) //number of clock ticks @8MHz per bit
+#define UART_HALF_BIT_TIME  ((UART_BIT_TIME / 2)-ISR_OFFSET) //number of clock ticks @8MHz per bit
 #define UART_BUFF_SIZE (4)
 #define UART_RX_BIT    (PB0)
 #define UART_TX_BIT    (PB1)
@@ -168,7 +171,7 @@ void init(void){
     //interrupt on OVF and OCIE0A
     TCCR0A = 0x00;
     TCCR0B = 0x00; //leave timer disabled for now (1<<CS00);
-    TIMSK0 = (1<<TOIE0) | (1<<OCIE0A);
+    TIMSK0 = (1<<TOIE0) | (1<<OCIE0A) | (1<<OCIE0B);
     //set first compare value to 1/19200/2 = 26us = 208 tim-ticks @ 8MHz
     //TODO: verify 16 bit access
     OCR0A = TIM_OCR_START;
@@ -201,16 +204,32 @@ void init(void){
 
 //external interrupt -> store timer value
 ISR(INT0_vect){
-   cur_meas = TCNT0;
+   OCR0A = TCNT0+UART_HALF_BIT_TIME;
+   //disable EXTI;
 }
 
-//TIM0 overflow handler
-ISR(TIM0_COMPB_vect){
-    //enable eternal interrupt
-    PCICR |= (1 << PCIE0);
-    //set pin to input
-    DDRB &= ~(1 << CAP_TOUCH_PIN);
-    //disable
+
+//TIM0 overflow handler, measurement start (don't use registers, so no loads..)
+ISR(TIM0_OVF_vect, ISR_NAKED){
+    //set cap_touch pin to input pin to input
+    //DDRB = (1 << CAP_TOUCH_PIN);
+    asm("push r24");
+    asm("ldi r24,lo8(2)");
+    asm("out 1,r24");
+    asm("pop r24");
+    asm("reti");
+}
+
+
+//TIM0 overflow handler (don't use registers, so no loads..)
+ISR(TIM0_COMPB_vect,ISR_NAKED){
+    //only enable OCR0A interrupt
+    //TIMSK0 = (1<<OCIE0A);
+    asm("push r24");
+    asm("lds r24,bit_nr");
+    asm("out 43,r24");
+    asm("pop r24");
+    asm("reti");
 }
 
 
@@ -228,4 +247,7 @@ ISR(TIM0_COMPA_vect){
     //update interrupt compare value
     OCR0A += OCR_INCREMENT;
 
+
+    //enable eternal interrupt
+    PCICR |= (1 << PCIE0);
 }
