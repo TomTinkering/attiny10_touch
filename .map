@@ -10,6 +10,7 @@ Archive member included because of file (symbol)
 Allocating common symbols
 Common symbol       size              file
 
+ocr_state           0x1               build/main.o
 tx_nr_sent          0x1               build/main.o
 rx_state            0x1               build/main.o
 tx_state            0x1               build/main.o
@@ -24,6 +25,7 @@ cur_rx              0x1               build/main.o
 cur_rx_pos          0x1               build/main.o
 bit_nr              0x1               build/main.o
 cur_tx              0x1               build/main.o
+uart_cnt            0x1               build/main.o
 rx_in               0x1               build/main.o
 
 Memory Configuration
@@ -134,7 +136,7 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
 .rela.plt
  *(.rela.plt)
 
-.text           0x0000000000000000      0x162
+.text           0x0000000000000000      0x178
  *(.vectors)
  .vectors       0x0000000000000000       0x16 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
                 0x0000000000000000                __vectors
@@ -197,27 +199,27 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
                 0x000000000000004c                __vector_2
                 0x000000000000004c                __vector_8
                 0x000000000000004c                __vector_10
- .text          0x000000000000004e       0x92 build/main.o
+ .text          0x000000000000004e       0xa8 build/main.o
                 0x000000000000004e                init
                 0x0000000000000068                __vector_1
-                0x0000000000000090                __vector_4
-                0x000000000000009a                __vector_6
-                0x00000000000000a4                __vector_5
- .text          0x00000000000000e0        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
- .text          0x00000000000000e0        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
- .text          0x00000000000000e0        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
-                0x00000000000000e0                . = ALIGN (0x2)
+                0x000000000000008a                __vector_4
+                0x0000000000000094                __vector_6
+                0x000000000000009e                __vector_5
+ .text          0x00000000000000f6        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .text          0x00000000000000f6        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
+ .text          0x00000000000000f6        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
+                0x00000000000000f6                . = ALIGN (0x2)
  *(.text.*)
- .text.startup  0x00000000000000e0       0x7e build/main.o
-                0x00000000000000e0                main
- .text.libgcc   0x000000000000015e        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
- .text.libgcc   0x000000000000015e        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
- .text.libgcc   0x000000000000015e        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
-                0x000000000000015e                . = ALIGN (0x2)
+ .text.startup  0x00000000000000f6       0x7e build/main.o
+                0x00000000000000f6                main
+ .text.libgcc   0x0000000000000174        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .text.libgcc   0x0000000000000174        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
+ .text.libgcc   0x0000000000000174        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
+                0x0000000000000174                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x000000000000015e        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
-                0x000000000000015e                exit
-                0x000000000000015e                _exit
+ .fini9         0x0000000000000174        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+                0x0000000000000174                exit
+                0x0000000000000174                _exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -236,11 +238,11 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x000000000000015e        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .fini0         0x0000000000000174        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
  *(.fini0)
-                0x0000000000000162                _etext = .
+                0x0000000000000178                _etext = .
 
-.data           0x0000000000800040        0x0 load address 0x0000000000000162
+.data           0x0000000000800040        0x0 load address 0x0000000000000178
                 0x0000000000800040                PROVIDE (__data_start, .)
  *(.data)
  .data          0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
@@ -256,7 +258,7 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
                 0x0000000000800040                _edata = .
                 0x0000000000800040                PROVIDE (__data_end, .)
 
-.bss            0x0000000000800040       0x16
+.bss            0x0000000000800040       0x18
                 0x0000000000800040                PROVIDE (__bss_start, .)
  *(.bss)
  .bss           0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
@@ -266,32 +268,34 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  .bss           0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
  *(.bss*)
  *(COMMON)
- COMMON         0x0000000000800040       0x16 build/main.o
-                0x0000000000800040                tx_nr_sent
-                0x0000000000800041                rx_state
-                0x0000000000800042                tx_state
-                0x0000000000800043                cur_tx_pos
-                0x0000000000800044                rx
-                0x0000000000800048                tx_out
-                0x0000000000800049                cur_meas
-                0x000000000080004b                sample_state
-                0x000000000080004c                rx_nr_recv
-                0x000000000080004d                tx
-                0x0000000000800051                cur_rx
-                0x0000000000800052                cur_rx_pos
-                0x0000000000800053                bit_nr
-                0x0000000000800054                cur_tx
-                0x0000000000800055                rx_in
-                0x0000000000800056                PROVIDE (__bss_end, .)
-                0x0000000000000162                __data_load_start = LOADADDR (.data)
-                0x0000000000000162                __data_load_end = (__data_load_start + SIZEOF (.data))
+ COMMON         0x0000000000800040       0x18 build/main.o
+                0x0000000000800040                ocr_state
+                0x0000000000800041                tx_nr_sent
+                0x0000000000800042                rx_state
+                0x0000000000800043                tx_state
+                0x0000000000800044                cur_tx_pos
+                0x0000000000800045                rx
+                0x0000000000800049                tx_out
+                0x000000000080004a                cur_meas
+                0x000000000080004c                sample_state
+                0x000000000080004d                rx_nr_recv
+                0x000000000080004e                tx
+                0x0000000000800052                cur_rx
+                0x0000000000800053                cur_rx_pos
+                0x0000000000800054                bit_nr
+                0x0000000000800055                cur_tx
+                0x0000000000800056                uart_cnt
+                0x0000000000800057                rx_in
+                0x0000000000800058                PROVIDE (__bss_end, .)
+                0x0000000000000178                __data_load_start = LOADADDR (.data)
+                0x0000000000000178                __data_load_end = (__data_load_start + SIZEOF (.data))
 
-.noinit         0x0000000000800056        0x0
-                0x0000000000800056                PROVIDE (__noinit_start, .)
+.noinit         0x0000000000800058        0x0
+                0x0000000000800058                PROVIDE (__noinit_start, .)
  *(.noinit*)
-                0x0000000000800056                PROVIDE (__noinit_end, .)
-                0x0000000000800056                _end = .
-                0x0000000000800056                PROVIDE (__heap_start, .)
+                0x0000000000800058                PROVIDE (__noinit_end, .)
+                0x0000000000800058                _end = .
+                0x0000000000800058                PROVIDE (__heap_start, .)
 
 .lock
  *(.lock*)
@@ -345,31 +349,31 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x0000000000000000      0x311
+.debug_info     0x0000000000000000      0x343
  *(.debug_info)
- .debug_info    0x0000000000000000      0x311 build/main.o
+ .debug_info    0x0000000000000000      0x343 build/main.o
  *(.gnu.linkonce.wi.*)
 
 .debug_abbrev   0x0000000000000000      0x108
  *(.debug_abbrev)
  .debug_abbrev  0x0000000000000000      0x108 build/main.o
 
-.debug_line     0x0000000000000000       0xe1
+.debug_line     0x0000000000000000       0xf3
  *(.debug_line)
- .debug_line    0x0000000000000000       0xe1 build/main.o
+ .debug_line    0x0000000000000000       0xf3 build/main.o
 
-.debug_frame    0x0000000000000000       0xa4
+.debug_frame    0x0000000000000000       0x8c
  *(.debug_frame)
- .debug_frame   0x0000000000000000       0xa4 build/main.o
+ .debug_frame   0x0000000000000000       0x8c build/main.o
 
-.debug_str      0x0000000000000000      0x166
+.debug_str      0x0000000000000000      0x179
  *(.debug_str)
- .debug_str     0x0000000000000000      0x166 build/main.o
-                                        0x19a (size before relaxing)
+ .debug_str     0x0000000000000000      0x179 build/main.o
+                                        0x1ad (size before relaxing)
 
-.debug_loc      0x0000000000000000       0x92
+.debug_loc      0x0000000000000000       0x49
  *(.debug_loc)
- .debug_loc     0x0000000000000000       0x92 build/main.o
+ .debug_loc     0x0000000000000000       0x49 build/main.o
 
 .debug_macinfo
  *(.debug_macinfo)
@@ -423,6 +427,7 @@ exit                                              /opt/cross/avr/bin/../lib/gcc/
 init                                              build/main.o
 main                                              build/main.o
                                                   /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
+ocr_state                                         build/main.o
 rx                                                build/main.o
 rx_in                                             build/main.o
 rx_nr_recv                                        build/main.o
@@ -432,3 +437,4 @@ tx                                                build/main.o
 tx_nr_sent                                        build/main.o
 tx_out                                            build/main.o
 tx_state                                          build/main.o
+uart_cnt                                          build/main.o

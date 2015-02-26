@@ -468,13 +468,14 @@ typedef enum uart_state_t {
     START,
     STOP
 } uart_state_t;
-# 48 "main.c"
+# 50 "main.c"
 uint8_t tx[(4)];
 uint8_t rx[(4)];
 
 uart_state_t rx_state;
 uart_state_t tx_state;
 
+uint8_t ocr_state;
 uint8_t bit_nr;
 uint8_t rx_in;
 uint8_t cur_rx;
@@ -484,6 +485,7 @@ uint8_t rx_nr_recv;
 uint8_t tx_nr_sent;
 uint8_t cur_rx_pos;
 uint8_t cur_tx_pos;
+uint8_t uart_cnt;
 
 
 
@@ -598,14 +600,33 @@ void init(void){
 
 
     (*(volatile uint16_t *)((0x26) + 0x00)) = ((uint16_t)208);
-# 185 "main.c"
+# 189 "main.c"
     sample_state = (0x00);
 
 }
-# 205 "main.c"
-void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_1 (void){
-   (*(volatile uint16_t *)((0x26) + 0x00)) = (*(volatile uint16_t *)((0x28) + 0x00))+(((uint16_t)417) / 2);
+# 207 "main.c"
+void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_1 (void){
 
+    asm("push r16");
+    asm("in r16,__SREG__");
+    asm("push r24");
+    asm("push r25");
+
+    asm("in r24,40");
+    asm("in r25,41");
+    asm("subi r24,lo8(-(194))");
+    asm("sbci r25,hi8(-(194))");
+    asm("out 39,r25");
+    asm("out 38,r24");
+
+    asm("ldi r24,lo8(0)");
+    asm("out 19,r24");
+
+    asm("pop r25");
+    asm("pop r24");
+    asm("out __SREG__,r16");
+    asm("pop r16");
+    asm("reti");
 }
 
 
@@ -626,9 +647,8 @@ void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) __attri
 
 
     asm("push r24");
-
-
-    (*(volatile uint8_t *)((0x2B) + 0x00)) = bit_nr;
+    asm("lds r24,ocr_state");
+    asm("out 43,r24");
     asm("pop r24");
     asm("reti");
 }
@@ -638,17 +658,17 @@ void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) __attri
 void __vector_5 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_5 (void){
 
 
-    rx_in = ((*(volatile uint8_t *)((0x00) + 0x00))) & (1 << (0));
+    (*(volatile uint16_t *)((0x26) + 0x00)) += ((uint16_t)417) - (4+10);
 
-    if(tx_out > 0){
-        ((*(volatile uint8_t *)((0x02) + 0x00))) |= (1<<(1));
-    } else {
-        ((*(volatile uint8_t *)((0x02) + 0x00))) &= ~(1<<(1));
+    cur_rx |= (((*(volatile uint8_t *)((0x00) + 0x00)) >> 2) & 0x01) << 1;
+
+    (*(volatile uint8_t *)((0x00) + 0x00)) |= cur_tx;
+
+    uart_cnt++;
+    if(uart_cnt > 9){
+
+        (*(volatile uint8_t *)((0x2B) + 0x00)) &= ~(1 << 1);
+        ocr_state = 0x00;
     }
 
-    (*(volatile uint16_t *)((0x26) + 0x00)) += ((uint16_t)417);
-
-
-
-    (*(volatile uint8_t *)((0x12) + 0x00)) |= (1 << 0);
 }

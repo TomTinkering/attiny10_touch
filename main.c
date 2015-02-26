@@ -26,7 +26,8 @@ typedef enum uart_state_t {
     STOP
 } uart_state_t;
 
-#define ISR_OFFSET     (4) //the number of instructions before INT0 is executed
+//the number of instructions before INT0 is executed
+#define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
 #define UART_BIT_TIME  ((uint16_t)417) //number of clock ticks @8MHz per bit
 #define UART_HALF_BIT_TIME  ((UART_BIT_TIME / 2)-ISR_OFFSET) //number of clock ticks @8MHz per bit
 #define UART_BUFF_SIZE (4)
@@ -52,6 +53,7 @@ uint8_t rx[UART_BUFF_SIZE];
 uart_state_t rx_state;
 uart_state_t tx_state;
 
+uint8_t ocr_state;
 uint8_t bit_nr;
 uint8_t rx_in;
 uint8_t cur_rx;
@@ -61,6 +63,7 @@ uint8_t rx_nr_recv;
 uint8_t tx_nr_sent;
 uint8_t cur_rx_pos;
 uint8_t cur_tx_pos;
+uint8_t uart_cnt;
 
 
 
@@ -187,29 +190,46 @@ void init(void){
 
 }
 
-////external interrupt -> store timer value
-//ISR(PCINT0_vect,ISR_NAKED)
-//{
-//   //cur_meas = TCNT0; TCNT0 = 0x28 = 40
-//   asm("push r24");
-//   asm("push r25");
-//   asm("in r24,40");
-//   asm("in r25,41");
-//   asm("sts cur_meas+1,r25");
-//   asm("sts cur_meas,r24");
-//   asm("pop r25");
-//   asm("pop r24");
-//   asm("reti");
-//}
 
-//external interrupt -> store timer value
-ISR(INT0_vect){
-   OCR0A = TCNT0+UART_HALF_BIT_TIME;
-   //disable EXTI;
+
+
+
+
+//=====================================
+//INTERRUPT HANDLERS
+//=====================================
+
+//Warning, interrupts are ISR_NAKED to reduce jitter in the start
+//of the cap measurement and UART sample times. Be careful when
+//changing
+
+//external interrupt
+ISR(INT0_vect,ISR_NAKED){
+    //enter interrupt
+    asm("push r16");
+    asm("in r16,__SREG__");
+    asm("push r24");
+    asm("push r25");
+    //OCR0A = TCNT0+UART_HALF_BIT_TIME;
+    asm("in r24,40");
+    asm("in r25,41");
+    asm("subi r24,lo8(-(194))");
+    asm("sbci r25,hi8(-(194))");
+    asm("out 39,r25");
+    asm("out 38,r24");
+    //EIMSK = 0x00;
+    asm("ldi r24,lo8(0)");
+    asm("out 19,r24");
+    //exit interrupt
+    asm("pop r25");
+    asm("pop r24");
+    asm("out __SREG__,r16");
+    asm("pop r16");
+    asm("reti");
 }
 
 
-//TIM0 overflow handler, measurement start (don't use registers, so no loads..)
+//TIM0 overflow handler, measurement start
 ISR(TIM0_OVF_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
     //DDRB = (1 << CAP_TOUCH_PIN);
@@ -221,12 +241,12 @@ ISR(TIM0_OVF_vect, ISR_NAKED){
 }
 
 
-//TIM0 overflow handler (don't use registers, so no loads..)
+//TIM0 overflow handler
 ISR(TIM0_COMPB_vect,ISR_NAKED){
     //only enable OCR0A interrupt
-    //TIMSK0 = (1<<OCIE0A);
+    //TIMSK0 = oc_state;
     asm("push r24");
-    asm("lds r24,bit_nr");
+    asm("lds r24,ocr_state");
     asm("out 43,r24");
     asm("pop r24");
     asm("reti");
@@ -236,18 +256,18 @@ ISR(TIM0_COMPB_vect,ISR_NAKED){
 //OCR0A interrupt handler
 ISR(TIM0_COMPA_vect){
 
-    //store new rx_in value;
-    rx_in = UART_RX_PINx & (1 << UART_RX_BIT);
-    //write next output bit
-    if(tx_out > 0){
-        UART_TX_PORTx |= (1<<UART_TX_BIT);
-    } else {
-        UART_TX_PORTx &= ~(1<<UART_TX_BIT);
+    //update OCR0A
+    OCR0A += UART_BIT_TIME - ISR_OFFSET;
+    //sample input
+    cur_rx |= ((PINB >> 2) & 0x01) << 1;
+    //set output
+    PINB |= cur_tx;
+    //increment count
+    uart_cnt++;
+    if(uart_cnt > 9){
+        //disable OCR0A interrupt until processed
+        TIMSK0 &= ~(1 << OCIE0A);
+        ocr_state = 0x00;
     }
-    //update interrupt compare value
-    OCR0A += OCR_INCREMENT;
 
-
-    //enable eternal interrupt
-    PCICR |= (1 << PCIE0);
 }
