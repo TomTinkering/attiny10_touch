@@ -12,7 +12,7 @@
   12               		.cfi_sections	.debug_frame
   13               	.global	init
   15               	init:
-  16               	.LFB8:
+  16               	.LFB7:
   17               		.file 1 "main.c"
    1:main.c        **** #include <util/delay.h>
    2:main.c        **** #include <avr/io.h>
@@ -20,79 +20,79 @@
    4:main.c        **** 
    5:main.c        **** #define TRUE (1)
    6:main.c        **** #define FALSE (0)
-   7:main.c        **** #define TIM_OCR_START ((uint16_t)208)
-   8:main.c        **** #define NEW_SAMPLE (0xFF)
-   9:main.c        **** #define OLD_SAMPLE (0x00)
-  10:main.c        **** #define CAP_TOUCH_PIN (PIN1) //TODO: set proper pin
-  11:main.c        **** //next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
-  12:main.c        **** #define OCR_INCREMENT ((uint16_t)417)
-  13:main.c        **** 
+   7:main.c        **** 
+   8:main.c        **** #define CAP_TOUCH_PIN (PIN1) //TODO: set proper pin
+   9:main.c        **** 
+  10:main.c        **** #define OCR_INCREMENT ((uint16_t)417)
+  11:main.c        **** 
+  12:main.c        **** 
+  13:main.c        **** void init(void);
   14:main.c        **** 
-  15:main.c        **** void init(void);
-  16:main.c        **** 
-  17:main.c        **** 
-  18:main.c        **** uint16_t cur_meas;
-  19:main.c        **** uint8_t sample_state;
-  20:main.c        **** 
-  21:main.c        **** typedef enum uart_state_t {
-  22:main.c        ****     IDLE,
-  23:main.c        ****     RECEIVING,
-  24:main.c        ****     SENDING,
-  25:main.c        ****     START,
-  26:main.c        ****     STOP
-  27:main.c        **** } uart_state_t;
-  28:main.c        **** 
-  29:main.c        **** //the number of instructions before INT0 is executed
-  30:main.c        **** #define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
-  31:main.c        **** #define UART_BIT_TIME  ((uint16_t)417) //number of clock ticks @8MHz per bit
-  32:main.c        **** #define UART_HALF_BIT_TIME  ((UART_BIT_TIME / 2)-ISR_OFFSET) //number of clock ticks @8MHz per bit
-  33:main.c        **** #define UART_BUFF_SIZE (4)
-  34:main.c        **** #define UART_RX_BIT    (PB0)
-  35:main.c        **** #define UART_TX_BIT    (PB1)
-  36:main.c        **** #define UART_RX_PORTx  (PORTB)
-  37:main.c        **** #define UART_TX_PORTx  (PORTB)
-  38:main.c        **** #define UART_RX_PINx   (PINB)
-  39:main.c        **** #define UART_TX_PINx   (PINB)
-  40:main.c        **** 
-  41:main.c        **** #define HIGH (0xFF)
-  42:main.c        **** #define LOW  (0x00)
+  15:main.c        **** 
+  16:main.c        **** //the number of instructions before INT0 is executed
+  17:main.c        **** #define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
+  18:main.c        **** 
+  19:main.c        **** //next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
+  20:main.c        **** #define UART_BIT_TIME       ((uint16_t)417) //number of clock ticks @8MHz per bit
+  21:main.c        **** 
+  22:main.c        **** #define UART_OCR_OFFSET     (4+10) //4 till call, 10 till instruction
+  23:main.c        **** #define UART_OCR_INC        ((UART_BIT_TIME / 2)-UART_OCR_OFFSET)
+  24:main.c        **** #define UART_HALF_OCR_INC   (UART_BIT_TIME-UART_OCR_OFFSET)
+  25:main.c        **** 
+  26:main.c        **** #define UART_RX_PIN    (PB0)
+  27:main.c        **** #define UART_TX_PIN    (PB1)
+  28:main.c        **** #define UART_START     (0)
+  29:main.c        **** #define UART_STOP      (9)
+  30:main.c        **** 
+  31:main.c        **** //protocol definitions
+  32:main.c        **** #define SLOT_TAKEN_BIT (7)
+  33:main.c        **** 
+  34:main.c        **** uint16_t       cur_meas;
+  35:main.c        **** uint8_t cur_conf,cur_touch;
+  36:main.c        **** uint8_t cur_rx,cur_tx,tx_cnt;
+  37:main.c        **** 
+  38:main.c        **** int main(void) {
+  39:main.c        **** 
+  40:main.c        ****   init();
+  41:main.c        **** 
+  42:main.c        ****   while(TRUE){
   43:main.c        **** 
-  44:main.c        **** #define UART_SET_START(port,pin) (port &= ~(1<<pin))
-  45:main.c        **** #define UART_SET_STOP(port,pin)  (port |= (1<<pin))
-  46:main.c        **** #define UART_GET_START(port,pin) (~port & (1<<pin))
+  44:main.c        ****       //if uart cycle has completed (both interrupts disabled) prepare next
+  45:main.c        ****       if( ( EIMSK & (1 << INT0) ) && ( TIMSK0 & (1 << OCIE0A) ) )
+  46:main.c        ****       {
   47:main.c        **** 
-  48:main.c        **** //uart buffers
-  49:main.c        **** //TODO: probably not needed
-  50:main.c        **** uint8_t tx[UART_BUFF_SIZE];
-  51:main.c        **** uint8_t rx[UART_BUFF_SIZE];
-  52:main.c        **** 
-  53:main.c        **** uart_state_t rx_state;
-  54:main.c        **** uart_state_t tx_state;
-  55:main.c        **** 
-  56:main.c        **** uint8_t ocr_state;
-  57:main.c        **** uint8_t bit_nr;
-  58:main.c        **** uint8_t rx_in;
-  59:main.c        **** uint8_t cur_rx;
-  60:main.c        **** uint8_t cur_tx;
-  61:main.c        **** uint8_t tx_out;
-  62:main.c        **** uint8_t rx_nr_recv;
-  63:main.c        **** uint8_t tx_nr_sent;
-  64:main.c        **** uint8_t cur_rx_pos;
-  65:main.c        **** uint8_t cur_tx_pos;
-  66:main.c        **** uint8_t uart_cnt;
-  67:main.c        **** 
-  68:main.c        **** 
-  69:main.c        **** 
-  70:main.c        **** 
-  71:main.c        **** static inline void handle_uart_io(void);
-  72:main.c        **** 
-  73:main.c        **** int main(void) {
-  74:main.c        **** 
-  75:main.c        ****   init();
-  76:main.c        **** 
-  77:main.c        ****   while(TRUE){
-  78:main.c        **** 
-  79:main.c        ****       handle_uart_io();
+  48:main.c        ****           //check if  is for us
+  49:main.c        ****           if(cur_rx & (1 << SLOT_TAKEN_BIT)){
+  50:main.c        ****               //if for us, store settings, refresh button state
+  51:main.c        ****               cur_conf = cur_rx;
+  52:main.c        ****               cur_tx = cur_rx | (1<<SLOT_TAKEN_BIT) | cur_touch;
+  53:main.c        ****           } else {
+  54:main.c        ****               //if not for us pass on untouched
+  55:main.c        ****               cur_tx = cur_rx;
+  56:main.c        ****           }
+  57:main.c        **** 
+  58:main.c        ****           //go to uart idle state (enable EXTI)
+  59:main.c        ****           EIMSK = (1 << INT0);
+  60:main.c        **** 
+  61:main.c        ****       }
+  62:main.c        **** 
+  63:main.c        **** //      //is measurement is done, store and start next
+  64:main.c        **** //      if(TIFR0 & (1<<ICF0)){
+  65:main.c        **** //
+  66:main.c        **** //          //calculate duration
+  67:main.c        **** //          cur_meas = ((uint16_t)ICR0) - cur_meas;
+  68:main.c        **** //
+  69:main.c        **** //          //----------------------------
+  70:main.c        **** //          //critical section (keep short)
+  71:main.c        **** //          cli(); //disable interrupts
+  72:main.c        **** //          //store timer value
+  73:main.c        **** //          cur_meas = TCNT0;
+  74:main.c        **** //          //set output pin
+  75:main.c        **** //
+  76:main.c        **** //          sei(); //enable interrupts
+  77:main.c        **** //          //----------------------------
+  78:main.c        **** //
+  79:main.c        **** //      }
   80:main.c        **** 
   81:main.c        **** 
   82:main.c        **** 
@@ -103,640 +103,441 @@
   87:main.c        **** }
   88:main.c        **** 
   89:main.c        **** 
-  90:main.c        **** static inline void handle_uart_io(void){
-  91:main.c        **** 
-  92:main.c        ****     //TODO: error checking here (has the sampling interrupt occured?)
-  93:main.c        **** 
-  94:main.c        ****     //add sample to state, if byte is complete, store in buffer
-  95:main.c        **** 
-  96:main.c        ****     switch (rx_state){
-  97:main.c        **** 
-  98:main.c        ****     case IDLE:
-  99:main.c        ****         if(rx_in == 0) { //if 0 was received
- 100:main.c        ****             rx_state = RECEIVING;
- 101:main.c        ****             rx_nr_recv=0;
- 102:main.c        ****             cur_rx = 0;
- 103:main.c        ****         }
- 104:main.c        ****         break;
- 105:main.c        **** 
- 106:main.c        ****     case RECEIVING :
- 107:main.c        ****         //increment number received bits
- 108:main.c        ****         rx_nr_recv++;
- 109:main.c        ****         //store received bit
- 110:main.c        ****         cur_rx |= (rx_in << rx_nr_recv);
- 111:main.c        ****         //check if full byte is received
- 112:main.c        ****         if(rx_nr_recv == 8){
- 113:main.c        ****             rx_state = STOP;
- 114:main.c        ****         }
- 115:main.c        ****         break;
- 116:main.c        **** 
- 117:main.c        ****     case STOP :
- 118:main.c        ****         if(rx_in){
- 119:main.c        ****             rx[cur_rx_pos] = cur_rx;
- 120:main.c        ****             rx_state = IDLE;
- 121:main.c        ****         }
- 122:main.c        ****         break;
- 123:main.c        ****     }
- 124:main.c        **** 
- 125:main.c        **** 
- 126:main.c        ****     //handle TX
- 127:main.c        ****     switch (tx_state){
- 128:main.c        **** 
- 129:main.c        ****     case IDLE:
- 130:main.c        ****         if(cur_tx_pos != 0) { //if data is waiting
- 131:main.c        ****             tx_out = LOW;
- 132:main.c        ****             tx_state = SENDING;
- 133:main.c        ****             tx_nr_sent=0;
- 134:main.c        ****         } else {
- 135:main.c        ****             tx_out = HIGH;
- 136:main.c        ****         }
- 137:main.c        ****         break;
- 138:main.c        **** 
- 139:main.c        ****     case SENDING :
- 140:main.c        ****         //increment number received bits
- 141:main.c        ****         tx_nr_sent++;
- 142:main.c        ****         //store received bit
- 143:main.c        ****         tx_out |= (cur_tx >> tx_nr_sent) & (0x01);
- 144:main.c        ****         //check if full byte is received
- 145:main.c        ****         if(tx_nr_sent == 8){
- 146:main.c        ****             tx_state = STOP;
- 147:main.c        ****         }
- 148:main.c        ****         break;
- 149:main.c        **** 
- 150:main.c        ****     case STOP :
- 151:main.c        ****         tx_out = HIGH;
- 152:main.c        ****         tx_state = IDLE;
- 153:main.c        ****         break;
- 154:main.c        ****     }
- 155:main.c        **** 
- 156:main.c        ****     //determine new output bit
- 157:main.c        ****         //if in progress, continue
- 158:main.c        ****         //if not in progress, but byte in buffer, start
- 159:main.c        ****         //if neither, send 1;
- 160:main.c        **** 
- 161:main.c        **** 
- 162:main.c        **** }
- 163:main.c        **** 
- 164:main.c        **** 
- 165:main.c        **** void init(void){
-  18               		.loc 1 165 0
+  90:main.c        **** void init(void){
+  18               		.loc 1 90 0
   19               		.cfi_startproc
   20               	/* prologue: function */
   21               	/* frame size = 0 */
   22               	/* stack size = 0 */
   23               	.L__stack_usage = 0
- 166:main.c        **** 
- 167:main.c        ****     //set clock to 8Mhz, no prescaler, factory calibration
- 168:main.c        ****     CLKMSR = 0x00;
-  24               		.loc 1 168 0
+  91:main.c        **** 
+  92:main.c        ****     //set clock to 8Mhz, no prescaler, factory calibration
+  93:main.c        ****     CLKMSR = 0x00;
+  24               		.loc 1 93 0
   25 0000 17BF      		out 55-0,__zero_reg__
- 169:main.c        ****     OSCCAL = 0x00;
-  26               		.loc 1 169 0
+  94:main.c        ****     OSCCAL = 0x00;
+  26               		.loc 1 94 0
   27 0002 19BF      		out 57-0,__zero_reg__
- 170:main.c        ****     CLKPSR = 0x00;
-  28               		.loc 1 170 0
+  95:main.c        ****     CLKPSR = 0x00;
+  28               		.loc 1 95 0
   29 0004 16BF      		out 54-0,__zero_reg__
- 171:main.c        **** 
- 172:main.c        ****     //set timer to CTC mode, no output compare, no prescaler
- 173:main.c        ****     //reset on OCROB = floor(65536 / OCR_INCREMENT) * OCR_INCREMEN
- 174:main.c        ****     //interrupt on OVF and OCIE0A
- 175:main.c        ****     TCCR0A = 0x00;
-  30               		.loc 1 175 0
+  96:main.c        **** 
+  97:main.c        ****     //set timer to CTC mode, no output compare, no prescaler
+  98:main.c        ****     //reset on OCROB = floor(65536 / OCR_INCREMENT) * OCR_INCREMEN
+  99:main.c        ****     //interrupt on OVF and OCIE0A
+ 100:main.c        ****     TCCR0A = 0x00;
+  30               		.loc 1 100 0
   31 0006 1EBD      		out 46-0,__zero_reg__
- 176:main.c        ****     TCCR0B = 0x00; //leave timer disabled for now (1<<CS00);
-  32               		.loc 1 176 0
+ 101:main.c        ****     TCCR0B = 0x00; //leave timer disabled for now (1<<CS00);
+  32               		.loc 1 101 0
   33 0008 1DBD      		out 45-0,__zero_reg__
- 177:main.c        ****     TIMSK0 = (1<<TOIE0) | (1<<OCIE0A) | (1<<OCIE0B);
-  34               		.loc 1 177 0
+ 102:main.c        ****     TIMSK0 = (1<<TOIE0) | (1<<OCIE0A) | (1<<OCIE0B);
+  34               		.loc 1 102 0
   35 000a 87E0      		ldi r24,lo8(7)
   36 000c 8BBD      		out 43-0,r24
- 178:main.c        ****     //set first compare value to 1/19200/2 = 26us = 208 tim-ticks @ 8MHz
- 179:main.c        ****     //TODO: verify 16 bit access
- 180:main.c        ****     OCR0A = TIM_OCR_START;
-  37               		.loc 1 180 0
-  38 000e 80ED      		ldi r24,lo8(208)
-  39 0010 90E0      		ldi r25,hi8(208)
-  40 0012 97BD      		out 38+1-0,r25
-  41 0014 86BD      		out 38-0,r24
- 181:main.c        **** 
- 182:main.c        **** 
- 183:main.c        ****     //GPIO init
- 184:main.c        ****     //set led and touch to output
- 185:main.c        ****     //set one pin to output for uart
- 186:main.c        ****     //the other to input with pullup for uart
+  37               	/* epilogue start */
+ 103:main.c        ****     //set first compare value to 1/19200/2 = 26us = 208 tim-ticks @ 8MHz
+ 104:main.c        ****     //TODO: verify 16 bit access
+ 105:main.c        **** 
+ 106:main.c        **** 
+ 107:main.c        ****     //GPIO init
+ 108:main.c        ****     //set led and touch to output
+ 109:main.c        ****     //set one pin to output for uart
+ 110:main.c        ****     //the other to input with pullup for uart
+ 111:main.c        **** 
+ 112:main.c        **** 
+ 113:main.c        **** }
+  38               		.loc 1 113 0
+  39 000e 0895      		ret
+  40               		.cfi_endproc
+  41               	.LFE7:
+  43               		.section	.text.startup,"ax",@progbits
+  44               	.global	main
+  46               	main:
+  47               	.LFB6:
+  38:main.c        **** int main(void) {
+  48               		.loc 1 38 0
+  49               		.cfi_startproc
+  50               	/* prologue: function */
+  51               	/* frame size = 0 */
+  52               	/* stack size = 0 */
+  53               	.L__stack_usage = 0
+  40:main.c        ****   init();
+  54               		.loc 1 40 0
+  55 0000 00D0      		rcall init
+  59:main.c        ****           EIMSK = (1 << INT0);
+  56               		.loc 1 59 0
+  57 0002 61E0      		ldi r22,lo8(1)
+  58               	.L9:
+  45:main.c        ****       if( ( EIMSK & (1 << INT0) ) && ( TIMSK0 & (1 << OCIE0A) ) )
+  59               		.loc 1 45 0
+  60 0004 989B      		sbis 19-0,0
+  61 0006 00C0      		rjmp .L9
+  45:main.c        ****       if( ( EIMSK & (1 << INT0) ) && ( TIMSK0 & (1 << OCIE0A) ) )
+  62               		.loc 1 45 0 is_stmt 0 discriminator 1
+  63 0008 0BB5      		in __tmp_reg__,43-0
+  64 000a 01FF      		sbrs __tmp_reg__,1
+  65 000c 00C0      		rjmp .L9
+  49:main.c        ****           if(cur_rx & (1 << SLOT_TAKEN_BIT)){
+  66               		.loc 1 49 0 is_stmt 1
+  67 000e 90A0      		lds r25,cur_rx
+  68 0010 97FF      		sbrs r25,7
+  69 0012 00C0      		rjmp .L4
+  51:main.c        ****               cur_conf = cur_rx;
+  70               		.loc 1 51 0
+  71 0014 90A8      		sts cur_conf,r25
+  52:main.c        ****               cur_tx = cur_rx | (1<<SLOT_TAKEN_BIT) | cur_touch;
+  72               		.loc 1 52 0
+  73 0016 80A0      		lds r24,cur_touch
+  74 0018 892B      		or r24,r25
+  75 001a 8068      		ori r24,lo8(-128)
+  76 001c 80A8      		sts cur_tx,r24
+  77 001e 00C0      		rjmp .L5
+  78               	.L4:
+  55:main.c        ****               cur_tx = cur_rx;
+  79               		.loc 1 55 0
+  80 0020 90A8      		sts cur_tx,r25
+  81               	.L5:
+  59:main.c        ****           EIMSK = (1 << INT0);
+  82               		.loc 1 59 0
+  83 0022 63BB      		out 19-0,r22
+  84 0024 00C0      		rjmp .L9
+  85               		.cfi_endproc
+  86               	.LFE6:
+  88               		.text
+  89               	.global	__vector_1
+  91               	__vector_1:
+  92               	.LFB8:
+ 114:main.c        **** 
+ 115:main.c        **** 
+ 116:main.c        **** 
+ 117:main.c        **** 
+ 118:main.c        **** 
+ 119:main.c        **** 
+ 120:main.c        **** //=====================================
+ 121:main.c        **** //INTERRUPT HANDLERS
+ 122:main.c        **** //=====================================
+ 123:main.c        **** 
+ 124:main.c        **** //Warning, interrupts are ISR_NAKED to reduce jitter in the start
+ 125:main.c        **** //of the cap measurement and UART sample times. Be careful when
+ 126:main.c        **** //changing
+ 127:main.c        **** 
+ 128:main.c        **** //external interrupt (start of UART RX)
+ 129:main.c        **** ISR(INT0_vect,ISR_NAKED){
+  93               		.loc 1 129 0
+  94               		.cfi_startproc
+  95               	/* prologue: naked */
+  96               	/* frame size = 0 */
+  97               	/* stack size = 0 */
+  98               	.L__stack_usage = 0
+ 130:main.c        **** 
+ 131:main.c        ****     //allow touch to interrupt
+ 132:main.c        ****     sei();
+  99               		.loc 1 132 0
+ 100               	/* #APP */
+ 101               	 ;  132 "main.c" 1
+ 102 0010 7894      		sei
+ 103               	 ;  0 "" 2
+ 133:main.c        ****     //set first sample time
+ 134:main.c        ****     OCR0A = TCNT0+UART_HALF_OCR_INC;
+ 104               		.loc 1 134 0
+ 105               	/* #NOAPP */
+ 106 0012 88B5      		in r24,40-0
+ 107 0014 99B5      		in r25,40+1-0
+ 108 0016 8D56      		subi r24,lo8(-(403))
+ 109 0018 9E4F      		sbci r25,hi8(-(403))
+ 110 001a 97BD      		out 38+1-0,r25
+ 111 001c 86BD      		out 38-0,r24
+ 135:main.c        ****     //disable external interrupt, enable COMPA interrupt
+ 136:main.c        ****     EIMSK = 0x00;
+ 112               		.loc 1 136 0
+ 113 001e 13BB      		out 19-0,__zero_reg__
+ 137:main.c        ****     TIMSK0 |= (1<<OCIE0A);
+ 114               		.loc 1 137 0
+ 115 0020 8BB5      		in r24,43-0
+ 116 0022 8260      		ori r24,lo8(2)
+ 117 0024 8BBD      		out 43-0,r24
+ 118               	/* epilogue start */
+ 138:main.c        **** 
+ 139:main.c        **** }
+ 119               		.loc 1 139 0
+ 120               		.cfi_endproc
+ 121               	.LFE8:
+ 123               	.global	__vector_5
+ 125               	__vector_5:
+ 126               	.LFB9:
+ 140:main.c        **** 
+ 141:main.c        **** //OCR0A interrupt handler
+ 142:main.c        **** ISR(TIM0_COMPA_vect){
+ 127               		.loc 1 142 0
+ 128               		.cfi_startproc
+ 129 0026 1F93      		push r17
+ 130               	.LCFI0:
+ 131               		.cfi_def_cfa_offset 3
+ 132               		.cfi_offset 17, -2
+ 133 0028 0F93      		push r16
+ 134               	.LCFI1:
+ 135               		.cfi_def_cfa_offset 4
+ 136               		.cfi_offset 16, -3
+ 137 002a 0FB7      		in r16,__SREG__
+ 138 002c 0F93      		push r16
+ 139 002e 10E0      		ldi __zero_reg__,lo8(0)
+ 140 0030 6F93      		push r22
+ 141               	.LCFI2:
+ 142               		.cfi_def_cfa_offset 5
+ 143               		.cfi_offset 22, -4
+ 144 0032 7F93      		push r23
+ 145               	.LCFI3:
+ 146               		.cfi_def_cfa_offset 6
+ 147               		.cfi_offset 23, -5
+ 148 0034 8F93      		push r24
+ 149               	.LCFI4:
+ 150               		.cfi_def_cfa_offset 7
+ 151               		.cfi_offset 24, -6
+ 152 0036 9F93      		push r25
+ 153               	.LCFI5:
+ 154               		.cfi_def_cfa_offset 8
+ 155               		.cfi_offset 25, -7
+ 156               	/* prologue: Signal */
+ 157               	/* frame size = 0 */
+ 158               	/* stack size = 7 */
+ 159               	.L__stack_usage = 7
+ 143:main.c        **** 
+ 144:main.c        ****     //allow touch to interrupt
+ 145:main.c        ****     sei();
+ 160               		.loc 1 145 0
+ 161               	/* #APP */
+ 162               	 ;  145 "main.c" 1
+ 163 0038 7894      		sei
+ 164               	 ;  0 "" 2
+ 146:main.c        ****     //update OCR0A (always to reduce jitter)
+ 147:main.c        ****     OCR0A += UART_OCR_INC;
+ 165               		.loc 1 147 0
+ 166               	/* #NOAPP */
+ 167 003a 86B5      		in r24,38-0
+ 168 003c 97B5      		in r25,38+1-0
+ 169 003e 8E53      		subi r24,lo8(-(194))
+ 170 0040 9F4F      		sbci r25,hi8(-(194))
+ 171 0042 97BD      		out 38+1-0,r25
+ 172 0044 86BD      		out 38-0,r24
+ 148:main.c        **** 
+ 149:main.c        ****     //update RX and TX
+ 150:main.c        ****     if(tx_cnt == UART_START){
+ 173               		.loc 1 150 0
+ 174 0046 80A0      		lds r24,tx_cnt
+ 175 0048 8823      		tst r24
+ 176 004a 01F4      		brne .L12
+ 151:main.c        ****         //don't store sample, set TX low
+ 152:main.c        ****         PORTB &= ~(1 << UART_TX_PIN);
+ 177               		.loc 1 152 0
+ 178 004c 1198      		cbi 2-0,1
+ 153:main.c        ****         //icrement tx counter
+ 154:main.c        ****         tx_cnt++;
+ 179               		.loc 1 154 0
+ 180 004e 81E0      		ldi r24,lo8(1)
+ 181 0050 80A8      		sts tx_cnt,r24
+ 182 0052 00C0      		rjmp .L11
+ 183               	.L12:
+ 155:main.c        ****     } else if (tx_cnt < UART_STOP) {
+ 184               		.loc 1 155 0
+ 185 0054 8930      		cpi r24,lo8(9)
+ 186 0056 00F4      		brsh .L14
+ 156:main.c        ****         //store RX samle
+ 157:main.c        ****         cur_rx |= ((PINB >> 2) & 0x01);
+ 187               		.loc 1 157 0
+ 188 0058 80B1      		in r24,0-0
+ 189 005a 8695      		lsr r24
+ 190 005c 8695      		lsr r24
+ 191 005e 8170      		andi r24,lo8(1)
+ 192 0060 90A0      		lds r25,cur_rx
+ 193 0062 892B      		or r24,r25
+ 158:main.c        ****         cur_rx = (cur_rx << 1);
+ 194               		.loc 1 158 0
+ 195 0064 880F      		lsl r24
+ 196 0066 80A8      		sts cur_rx,r24
+ 159:main.c        ****         //set TX output
+ 160:main.c        ****         PORTB  = (PORTB & ~(1 << UART_TX_PIN)) | ((cur_tx & 0x01) << UART_TX_PIN);
+ 197               		.loc 1 160 0
+ 198 0068 62B1      		in r22,2-0
+ 199 006a 70A0      		lds r23,cur_tx
+ 200 006c 872F      		mov r24,r23
+ 201 006e 90E0      		ldi r25,lo8(0)
+ 202 0070 8170      		andi r24,lo8(1)
+ 203 0072 9070      		andi r25,hi8(1)
+ 204 0074 880F      		lsl r24
+ 205 0076 991F      		rol r25
+ 206 0078 6D7F      		andi r22,lo8(-3)
+ 207 007a 682B      		or r22,r24
+ 208 007c 62B9      		out 2-0,r22
+ 161:main.c        ****         cur_tx = (cur_tx >> 1);
+ 209               		.loc 1 161 0
+ 210 007e 7695      		lsr r23
+ 211 0080 70A8      		sts cur_tx,r23
+ 212 0082 00C0      		rjmp .L11
+ 213               	.L14:
+ 162:main.c        ****         //increment tx counter
+ 163:main.c        ****     } else {
+ 164:main.c        ****         //don't sample, set TX high
+ 165:main.c        ****         PORTB |= (1<<UART_TX_PIN);
+ 214               		.loc 1 165 0
+ 215 0084 119A      		sbi 2-0,1
+ 166:main.c        ****         //enable external interrupt, enable COMPA interrupt
+ 167:main.c        ****         //EIMSK = 0x01; TODO:think about sync with main
+ 168:main.c        ****         TIMSK0 &= ~(1<<OCIE0A);
+ 216               		.loc 1 168 0
+ 217 0086 8BB5      		in r24,43-0
+ 218 0088 8D7F      		andi r24,lo8(-3)
+ 219 008a 8BBD      		out 43-0,r24
+ 169:main.c        ****         //we are done, set tx_counter to 0
+ 170:main.c        ****         tx_cnt = 0x00;
+ 220               		.loc 1 170 0
+ 221 008c 10A8      		sts tx_cnt,__zero_reg__
+ 222               	.L11:
+ 223               	/* epilogue start */
+ 171:main.c        ****     }
+ 172:main.c        **** 
+ 173:main.c        **** }
+ 224               		.loc 1 173 0
+ 225 008e 9F91      		pop r25
+ 226 0090 8F91      		pop r24
+ 227 0092 7F91      		pop r23
+ 228 0094 6F91      		pop r22
+ 229 0096 0F91      		pop r16
+ 230 0098 0FBF      		out __SREG__,r16
+ 231 009a 0F91      		pop r16
+ 232 009c 1F91      		pop r17
+ 233 009e 1895      		reti
+ 234               		.cfi_endproc
+ 235               	.LFE9:
+ 237               	.global	__vector_4
+ 239               	__vector_4:
+ 240               	.LFB10:
+ 174:main.c        **** 
+ 175:main.c        **** 
+ 176:main.c        **** //TIM0 overflow handler,
+ 177:main.c        **** //Start touch measurement by setting pin to input
+ 178:main.c        **** ISR(TIM0_OVF_vect, ISR_NAKED){
+ 241               		.loc 1 178 0
+ 242               		.cfi_startproc
+ 243               	/* prologue: naked */
+ 244               	/* frame size = 0 */
+ 245               	/* stack size = 0 */
+ 246               	.L__stack_usage = 0
+ 179:main.c        ****     //set cap_touch pin to input pin to input
+ 180:main.c        ****     //DDRB = (1 << CAP_TOUCH_PIN);
+ 181:main.c        ****     asm("push r24");
+ 247               		.loc 1 181 0
+ 248               	/* #APP */
+ 249               	 ;  181 "main.c" 1
+ 250 00a0 8F93      		push r24
+ 251               	 ;  0 "" 2
+ 182:main.c        ****     asm("ldi r24,lo8(2)");
+ 252               		.loc 1 182 0
+ 253               	 ;  182 "main.c" 1
+ 254 00a2 82E0      		ldi r24,lo8(2)
+ 255               	 ;  0 "" 2
+ 183:main.c        ****     asm("out 1,r24");
+ 256               		.loc 1 183 0
+ 257               	 ;  183 "main.c" 1
+ 258 00a4 81B9      		out 1,r24
+ 259               	 ;  0 "" 2
+ 184:main.c        ****     asm("pop r24");
+ 260               		.loc 1 184 0
+ 261               	 ;  184 "main.c" 1
+ 262 00a6 8F91      		pop r24
+ 263               	 ;  0 "" 2
+ 185:main.c        ****     asm("reti");
+ 264               		.loc 1 185 0
+ 265               	 ;  185 "main.c" 1
+ 266 00a8 1895      		reti
+ 267               	 ;  0 "" 2
+ 268               	/* epilogue start */
+ 186:main.c        **** }
+ 269               		.loc 1 186 0
+ 270               	/* #NOAPP */
+ 271               		.cfi_endproc
+ 272               	.LFE10:
+ 274               	.global	__vector_6
+ 276               	__vector_6:
+ 277               	.LFB11:
  187:main.c        **** 
- 188:main.c        ****     //set sample state to old
- 189:main.c        ****     sample_state = OLD_SAMPLE;
-  42               		.loc 1 189 0
-  43 0016 10A8      		sts sample_state,__zero_reg__
-  44               	/* epilogue start */
- 190:main.c        **** 
- 191:main.c        **** }
-  45               		.loc 1 191 0
-  46 0018 0895      		ret
-  47               		.cfi_endproc
-  48               	.LFE8:
-  50               		.section	.text.startup,"ax",@progbits
-  51               	.global	main
-  53               	main:
-  54               	.LFB6:
-  73:main.c        **** int main(void) {
-  55               		.loc 1 73 0
-  56               		.cfi_startproc
-  57               	/* prologue: function */
-  58               	/* frame size = 0 */
-  59               	/* stack size = 0 */
-  60               	.L__stack_usage = 0
-  75:main.c        ****   init();
-  61               		.loc 1 75 0
-  62 0000 00D0      		rcall init
-  63               	.LBB4:
-  64               	.LBB5:
- 118:main.c        ****         if(rx_in){
-  65               		.loc 1 118 0
-  66 0002 B0A0      		lds r27,rx_in
- 119:main.c        ****             rx[cur_rx_pos] = cur_rx;
-  67               		.loc 1 119 0
-  68 0004 C0A0      		lds r28,cur_rx_pos
-  69 0006 D0E0      		ldi r29,lo8(0)
- 110:main.c        ****         cur_rx |= (rx_in << rx_nr_recv);
-  70               		.loc 1 110 0
-  71 0008 2B2F      		mov r18,r27
-  72 000a 30E0      		ldi r19,lo8(0)
- 130:main.c        ****         if(cur_tx_pos != 0) { //if data is waiting
-  73               		.loc 1 130 0
-  74 000c 50A0      		lds r21,cur_tx_pos
-  75 000e 70A0      		lds r23,rx_state
-  76 0010 E0A0      		lds r30,rx_nr_recv
-  77 0012 A0A0      		lds r26,cur_rx
-  78 0014 60A0      		lds r22,tx_state
-  79 0016 F0A0      		lds r31,tx_nr_sent
- 119:main.c        ****             rx[cur_rx_pos] = cur_rx;
-  80               		.loc 1 119 0
-  81 0018 C050      		subi r28,lo8(-(rx))
-  82 001a D040      		sbci r29,hi8(-(rx))
-  83 001c 00C0      		rjmp .L15
-  84               	.L12:
- 152:main.c        ****         tx_state = IDLE;
-  85               		.loc 1 152 0
-  86 001e 60E0      		ldi r22,lo8(0)
-  87               	.L15:
-  96:main.c        ****     switch (rx_state){
-  88               		.loc 1 96 0 discriminator 1
-  89 0020 7130      		cpi r23,lo8(1)
-  90 0022 01F0      		breq .L8
-  91 0024 7130      		cpi r23,lo8(1)
-  92 0026 00F0      		brlo .L7
-  93 0028 7430      		cpi r23,lo8(4)
-  94 002a 01F4      		brne .L6
-  95 002c 00C0      		rjmp .L16
-  96               	.L7:
-  99:main.c        ****         if(rx_in == 0) { //if 0 was received
-  97               		.loc 1 99 0
-  98 002e BB23      		tst r27
-  99 0030 01F4      		brne .L6
- 102:main.c        ****             cur_rx = 0;
- 100               		.loc 1 102 0
- 101 0032 A0E0      		ldi r26,lo8(0)
- 101:main.c        ****             rx_nr_recv=0;
- 102               		.loc 1 101 0
- 103 0034 E0E0      		ldi r30,lo8(0)
- 100:main.c        ****             rx_state = RECEIVING;
- 104               		.loc 1 100 0
- 105 0036 71E0      		ldi r23,lo8(1)
- 106 0038 00C0      		rjmp .L6
- 107               	.L8:
- 108:main.c        ****         rx_nr_recv++;
- 108               		.loc 1 108 0
- 109 003a EF5F      		subi r30,lo8(-(1))
- 110:main.c        ****         cur_rx |= (rx_in << rx_nr_recv);
- 110               		.loc 1 110 0
- 111 003c 822F      		mov r24,r18
- 112 003e 932F      		mov r25,r19
- 113 0040 0E2F      		mov r16,r30
- 114 0042 00C0      		rjmp 2f
- 115 0044 880F      	1:	lsl r24
- 116 0046 991F      		rol r25
- 117 0048 0A95      	2:	dec r16
- 118 004a 02F4      		brpl 1b
- 119 004c A82B      		or r26,r24
- 112:main.c        ****         if(rx_nr_recv == 8){
- 120               		.loc 1 112 0
- 121 004e E830      		cpi r30,lo8(8)
- 122 0050 01F4      		brne .L6
- 113:main.c        ****             rx_state = STOP;
- 123               		.loc 1 113 0
- 124 0052 74E0      		ldi r23,lo8(4)
- 125 0054 00C0      		rjmp .L6
- 126               	.L16:
- 118:main.c        ****         if(rx_in){
- 127               		.loc 1 118 0
- 128 0056 BB23      		tst r27
- 129 0058 01F0      		breq .L6
- 119:main.c        ****             rx[cur_rx_pos] = cur_rx;
- 130               		.loc 1 119 0
- 131 005a A883      		st Y,r26
- 120:main.c        ****             rx_state = IDLE;
- 132               		.loc 1 120 0
- 133 005c 70E0      		ldi r23,lo8(0)
- 134               	.L6:
- 127:main.c        ****     switch (tx_state){
- 135               		.loc 1 127 0
- 136 005e 6230      		cpi r22,lo8(2)
- 137 0060 01F0      		breq .L11
- 138 0062 6430      		cpi r22,lo8(4)
- 139 0064 01F0      		breq .L12
- 140 0066 6623      		tst r22
- 141 0068 01F4      		brne .L15
- 130:main.c        ****         if(cur_tx_pos != 0) { //if data is waiting
- 142               		.loc 1 130 0
- 143 006a 5523      		tst r21
- 144 006c 01F0      		breq .L15
- 133:main.c        ****             tx_nr_sent=0;
- 145               		.loc 1 133 0
- 146 006e F0E0      		ldi r31,lo8(0)
- 132:main.c        ****             tx_state = SENDING;
- 147               		.loc 1 132 0
- 148 0070 62E0      		ldi r22,lo8(2)
- 149 0072 00C0      		rjmp .L15
- 150               	.L11:
- 141:main.c        ****         tx_nr_sent++;
- 151               		.loc 1 141 0
- 152 0074 FF5F      		subi r31,lo8(-(1))
- 145:main.c        ****         if(tx_nr_sent == 8){
- 153               		.loc 1 145 0
- 154 0076 F830      		cpi r31,lo8(8)
- 155 0078 01F4      		brne .L15
- 146:main.c        ****             tx_state = STOP;
- 156               		.loc 1 146 0
- 157 007a 64E0      		ldi r22,lo8(4)
- 158 007c 00C0      		rjmp .L15
- 159               	.LBE5:
- 160               	.LBE4:
- 161               		.cfi_endproc
- 162               	.LFE6:
- 164               		.text
- 165               	.global	__vector_1
- 167               	__vector_1:
- 168               	.LFB9:
- 192:main.c        **** 
- 193:main.c        **** 
- 194:main.c        **** 
- 195:main.c        **** 
- 196:main.c        **** 
- 197:main.c        **** 
- 198:main.c        **** //=====================================
- 199:main.c        **** //INTERRUPT HANDLERS
- 200:main.c        **** //=====================================
- 201:main.c        **** 
- 202:main.c        **** //Warning, interrupts are ISR_NAKED to reduce jitter in the start
- 203:main.c        **** //of the cap measurement and UART sample times. Be careful when
- 204:main.c        **** //changing
- 205:main.c        **** 
- 206:main.c        **** //external interrupt
- 207:main.c        **** ISR(INT0_vect,ISR_NAKED){
- 169               		.loc 1 207 0
- 170               		.cfi_startproc
- 171               	/* prologue: naked */
- 172               	/* frame size = 0 */
- 173               	/* stack size = 0 */
- 174               	.L__stack_usage = 0
- 208:main.c        ****     //enter interrupt
- 209:main.c        ****     asm("push r16");
- 175               		.loc 1 209 0
- 176               	/* #APP */
- 177               	 ;  209 "main.c" 1
- 178 001a 0F93      		push r16
- 179               	 ;  0 "" 2
- 210:main.c        ****     asm("in r16,__SREG__");
- 180               		.loc 1 210 0
- 181               	 ;  210 "main.c" 1
- 182 001c 0FB7      		in r16,__SREG__
- 183               	 ;  0 "" 2
- 211:main.c        ****     asm("push r24");
- 184               		.loc 1 211 0
- 185               	 ;  211 "main.c" 1
- 186 001e 8F93      		push r24
- 187               	 ;  0 "" 2
- 212:main.c        ****     asm("push r25");
- 188               		.loc 1 212 0
- 189               	 ;  212 "main.c" 1
- 190 0020 9F93      		push r25
- 191               	 ;  0 "" 2
- 213:main.c        ****     //OCR0A = TCNT0+UART_HALF_BIT_TIME;
- 214:main.c        ****     asm("in r24,40");
- 192               		.loc 1 214 0
- 193               	 ;  214 "main.c" 1
- 194 0022 88B5      		in r24,40
- 195               	 ;  0 "" 2
- 215:main.c        ****     asm("in r25,41");
- 196               		.loc 1 215 0
- 197               	 ;  215 "main.c" 1
- 198 0024 99B5      		in r25,41
- 199               	 ;  0 "" 2
- 216:main.c        ****     asm("subi r24,lo8(-(194))");
- 200               		.loc 1 216 0
- 201               	 ;  216 "main.c" 1
- 202 0026 8E53      		subi r24,lo8(-(194))
- 203               	 ;  0 "" 2
- 217:main.c        ****     asm("sbci r25,hi8(-(194))");
- 204               		.loc 1 217 0
- 205               	 ;  217 "main.c" 1
- 206 0028 9F4F      		sbci r25,hi8(-(194))
- 207               	 ;  0 "" 2
- 218:main.c        ****     asm("out 39,r25");
- 208               		.loc 1 218 0
- 209               	 ;  218 "main.c" 1
- 210 002a 97BD      		out 39,r25
- 211               	 ;  0 "" 2
- 219:main.c        ****     asm("out 38,r24");
- 212               		.loc 1 219 0
- 213               	 ;  219 "main.c" 1
- 214 002c 86BD      		out 38,r24
- 215               	 ;  0 "" 2
- 220:main.c        ****     //EIMSK = 0x00;
- 221:main.c        ****     asm("ldi r24,lo8(0)");
- 216               		.loc 1 221 0
- 217               	 ;  221 "main.c" 1
- 218 002e 80E0      		ldi r24,lo8(0)
- 219               	 ;  0 "" 2
- 222:main.c        ****     asm("out 19,r24");
- 220               		.loc 1 222 0
- 221               	 ;  222 "main.c" 1
- 222 0030 83BB      		out 19,r24
- 223               	 ;  0 "" 2
- 223:main.c        ****     //exit interrupt
- 224:main.c        ****     asm("pop r25");
- 224               		.loc 1 224 0
- 225               	 ;  224 "main.c" 1
- 226 0032 9F91      		pop r25
- 227               	 ;  0 "" 2
- 225:main.c        ****     asm("pop r24");
- 228               		.loc 1 225 0
- 229               	 ;  225 "main.c" 1
- 230 0034 8F91      		pop r24
- 231               	 ;  0 "" 2
- 226:main.c        ****     asm("out __SREG__,r16");
- 232               		.loc 1 226 0
- 233               	 ;  226 "main.c" 1
- 234 0036 0FBF      		out __SREG__,r16
- 235               	 ;  0 "" 2
- 227:main.c        ****     asm("pop r16");
- 236               		.loc 1 227 0
- 237               	 ;  227 "main.c" 1
- 238 0038 0F91      		pop r16
- 239               	 ;  0 "" 2
- 228:main.c        ****     asm("reti");
- 240               		.loc 1 228 0
- 241               	 ;  228 "main.c" 1
- 242 003a 1895      		reti
- 243               	 ;  0 "" 2
- 244               	/* epilogue start */
- 229:main.c        **** }
- 245               		.loc 1 229 0
- 246               	/* #NOAPP */
- 247               		.cfi_endproc
- 248               	.LFE9:
- 250               	.global	__vector_4
- 252               	__vector_4:
- 253               	.LFB10:
- 230:main.c        **** 
- 231:main.c        **** 
- 232:main.c        **** //TIM0 overflow handler, measurement start
- 233:main.c        **** ISR(TIM0_OVF_vect, ISR_NAKED){
- 254               		.loc 1 233 0
- 255               		.cfi_startproc
- 256               	/* prologue: naked */
- 257               	/* frame size = 0 */
- 258               	/* stack size = 0 */
- 259               	.L__stack_usage = 0
- 234:main.c        ****     //set cap_touch pin to input pin to input
- 235:main.c        ****     //DDRB = (1 << CAP_TOUCH_PIN);
- 236:main.c        ****     asm("push r24");
- 260               		.loc 1 236 0
- 261               	/* #APP */
- 262               	 ;  236 "main.c" 1
- 263 003c 8F93      		push r24
- 264               	 ;  0 "" 2
- 237:main.c        ****     asm("ldi r24,lo8(2)");
- 265               		.loc 1 237 0
- 266               	 ;  237 "main.c" 1
- 267 003e 82E0      		ldi r24,lo8(2)
- 268               	 ;  0 "" 2
- 238:main.c        ****     asm("out 1,r24");
- 269               		.loc 1 238 0
- 270               	 ;  238 "main.c" 1
- 271 0040 81B9      		out 1,r24
- 272               	 ;  0 "" 2
- 239:main.c        ****     asm("pop r24");
- 273               		.loc 1 239 0
- 274               	 ;  239 "main.c" 1
- 275 0042 8F91      		pop r24
- 276               	 ;  0 "" 2
- 240:main.c        ****     asm("reti");
- 277               		.loc 1 240 0
- 278               	 ;  240 "main.c" 1
- 279 0044 1895      		reti
- 280               	 ;  0 "" 2
- 281               	/* epilogue start */
- 241:main.c        **** }
- 282               		.loc 1 241 0
- 283               	/* #NOAPP */
- 284               		.cfi_endproc
- 285               	.LFE10:
- 287               	.global	__vector_6
- 289               	__vector_6:
- 290               	.LFB11:
- 242:main.c        **** 
- 243:main.c        **** 
- 244:main.c        **** //TIM0 overflow handler
- 245:main.c        **** ISR(TIM0_COMPB_vect,ISR_NAKED){
- 291               		.loc 1 245 0
- 292               		.cfi_startproc
- 293               	/* prologue: naked */
- 294               	/* frame size = 0 */
- 295               	/* stack size = 0 */
- 296               	.L__stack_usage = 0
- 246:main.c        ****     //only enable OCR0A interrupt
- 247:main.c        ****     //TIMSK0 = oc_state;
- 248:main.c        ****     asm("push r24");
- 297               		.loc 1 248 0
- 298               	/* #APP */
- 299               	 ;  248 "main.c" 1
- 300 0046 8F93      		push r24
- 301               	 ;  0 "" 2
- 249:main.c        ****     asm("lds r24,ocr_state");
- 302               		.loc 1 249 0
- 303               	 ;  249 "main.c" 1
- 304 0048 80A0      		lds r24,ocr_state
- 305               	 ;  0 "" 2
- 250:main.c        ****     asm("out 43,r24");
- 306               		.loc 1 250 0
- 307               	 ;  250 "main.c" 1
- 308 004a 8BBD      		out 43,r24
- 309               	 ;  0 "" 2
- 251:main.c        ****     asm("pop r24");
- 310               		.loc 1 251 0
- 311               	 ;  251 "main.c" 1
- 312 004c 8F91      		pop r24
- 313               	 ;  0 "" 2
- 252:main.c        ****     asm("reti");
- 314               		.loc 1 252 0
- 315               	 ;  252 "main.c" 1
- 316 004e 1895      		reti
- 317               	 ;  0 "" 2
- 318               	/* epilogue start */
- 253:main.c        **** }
- 319               		.loc 1 253 0
- 320               	/* #NOAPP */
- 321               		.cfi_endproc
- 322               	.LFE11:
- 324               	.global	__vector_5
- 326               	__vector_5:
- 327               	.LFB12:
- 254:main.c        **** 
- 255:main.c        **** 
- 256:main.c        **** //OCR0A interrupt handler
- 257:main.c        **** ISR(TIM0_COMPA_vect){
- 328               		.loc 1 257 0
- 329               		.cfi_startproc
- 330 0050 1F93      		push r17
- 331               	.LCFI0:
- 332               		.cfi_def_cfa_offset 3
- 333               		.cfi_offset 17, -2
- 334 0052 0F93      		push r16
- 335               	.LCFI1:
- 336               		.cfi_def_cfa_offset 4
- 337               		.cfi_offset 16, -3
- 338 0054 0FB7      		in r16,__SREG__
- 339 0056 0F93      		push r16
- 340 0058 10E0      		ldi __zero_reg__,lo8(0)
- 341 005a 8F93      		push r24
- 342               	.LCFI2:
- 343               		.cfi_def_cfa_offset 5
- 344               		.cfi_offset 24, -4
- 345 005c 9F93      		push r25
- 346               	.LCFI3:
- 347               		.cfi_def_cfa_offset 6
- 348               		.cfi_offset 25, -5
- 349               	/* prologue: Signal */
- 350               	/* frame size = 0 */
- 351               	/* stack size = 5 */
- 352               	.L__stack_usage = 5
- 258:main.c        **** 
- 259:main.c        ****     //update OCR0A
- 260:main.c        ****     OCR0A += UART_BIT_TIME - ISR_OFFSET;
- 353               		.loc 1 260 0
- 354 005e 86B5      		in r24,38-0
- 355 0060 97B5      		in r25,38+1-0
- 356 0062 8D56      		subi r24,lo8(-(403))
- 357 0064 9E4F      		sbci r25,hi8(-(403))
- 358 0066 97BD      		out 38+1-0,r25
- 359 0068 86BD      		out 38-0,r24
- 261:main.c        ****     //sample input
- 262:main.c        ****     cur_rx |= ((PINB >> 2) & 0x01) << 1;
- 360               		.loc 1 262 0
- 361 006a 80B1      		in r24,0-0
- 362 006c 8695      		lsr r24
- 363 006e 8695      		lsr r24
- 364 0070 90E0      		ldi r25,lo8(0)
- 365 0072 8170      		andi r24,lo8(1)
- 366 0074 9070      		andi r25,hi8(1)
- 367 0076 880F      		lsl r24
- 368 0078 991F      		rol r25
- 369 007a 90A0      		lds r25,cur_rx
- 370 007c 982B      		or r25,r24
- 371 007e 90A8      		sts cur_rx,r25
- 263:main.c        ****     //set output
- 264:main.c        ****     PINB |= cur_tx;
- 372               		.loc 1 264 0
- 373 0080 80B1      		in r24,0-0
- 374 0082 90A0      		lds r25,cur_tx
- 375 0084 892B      		or r24,r25
- 376 0086 80B9      		out 0-0,r24
- 265:main.c        ****     //increment count
- 266:main.c        ****     uart_cnt++;
- 377               		.loc 1 266 0
- 378 0088 80A0      		lds r24,uart_cnt
- 379 008a 8F5F      		subi r24,lo8(-(1))
- 380 008c 80A8      		sts uart_cnt,r24
- 267:main.c        ****     if(uart_cnt > 9){
- 381               		.loc 1 267 0
- 382 008e 8A30      		cpi r24,lo8(10)
- 383 0090 00F0      		brlo .L20
- 268:main.c        ****         //disable OCR0A interrupt until processed
- 269:main.c        ****         TIMSK0 &= ~(1 << OCIE0A);
- 384               		.loc 1 269 0
- 385 0092 8BB5      		in r24,43-0
- 386 0094 8D7F      		andi r24,lo8(-3)
- 387 0096 8BBD      		out 43-0,r24
- 270:main.c        ****         ocr_state = 0x00;
- 388               		.loc 1 270 0
- 389 0098 10A8      		sts ocr_state,__zero_reg__
- 390               	.L20:
- 391               	/* epilogue start */
- 271:main.c        ****     }
- 272:main.c        **** 
- 273:main.c        **** }
- 392               		.loc 1 273 0
- 393 009a 9F91      		pop r25
- 394 009c 8F91      		pop r24
- 395 009e 0F91      		pop r16
- 396 00a0 0FBF      		out __SREG__,r16
- 397 00a2 0F91      		pop r16
- 398 00a4 1F91      		pop r17
- 399 00a6 1895      		reti
- 400               		.cfi_endproc
- 401               	.LFE12:
- 403               		.comm uart_cnt,1,1
- 404               		.comm cur_tx_pos,1,1
- 405               		.comm cur_rx_pos,1,1
- 406               		.comm tx_nr_sent,1,1
- 407               		.comm rx_nr_recv,1,1
- 408               		.comm tx_out,1,1
- 409               		.comm cur_tx,1,1
- 410               		.comm cur_rx,1,1
- 411               		.comm rx_in,1,1
- 412               		.comm bit_nr,1,1
- 413               		.comm ocr_state,1,1
- 414               		.comm tx_state,1,1
- 415               		.comm rx_state,1,1
- 416               		.comm rx,4,1
- 417               		.comm tx,4,1
- 418               		.comm sample_state,1,1
- 419               		.comm cur_meas,2,1
- 420               	.Letext0:
- 421               		.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
+ 188:main.c        **** 
+ 189:main.c        **** //TIM0 OCR0B match handler
+ 190:main.c        **** //Disable timer interrupts for touch, until main has processed
+ 191:main.c        **** //measurement
+ 192:main.c        **** ISR(TIM0_COMPB_vect,ISR_NAKED){
+ 278               		.loc 1 192 0
+ 279               		.cfi_startproc
+ 280               	/* prologue: naked */
+ 281               	/* frame size = 0 */
+ 282               	/* stack size = 0 */
+ 283               	.L__stack_usage = 0
+ 193:main.c        ****     //only enable OCR0A interrupt
+ 194:main.c        ****     //TIMSK0 &= (1<<OCIE0A);
+ 195:main.c        ****     asm("push r24");
+ 284               		.loc 1 195 0
+ 285               	/* #APP */
+ 286               	 ;  195 "main.c" 1
+ 287 00aa 8F93      		push r24
+ 288               	 ;  0 "" 2
+ 196:main.c        ****     asm("in r24,43");
+ 289               		.loc 1 196 0
+ 290               	 ;  196 "main.c" 1
+ 291 00ac 8BB5      		in r24,43
+ 292               	 ;  0 "" 2
+ 197:main.c        ****     asm("andi r24,lo8(2)");
+ 293               		.loc 1 197 0
+ 294               	 ;  197 "main.c" 1
+ 295 00ae 8270      		andi r24,lo8(2)
+ 296               	 ;  0 "" 2
+ 198:main.c        ****     asm("out 43,r24");
+ 297               		.loc 1 198 0
+ 298               	 ;  198 "main.c" 1
+ 299 00b0 8BBD      		out 43,r24
+ 300               	 ;  0 "" 2
+ 199:main.c        ****     asm("pop r24");
+ 301               		.loc 1 199 0
+ 302               	 ;  199 "main.c" 1
+ 303 00b2 8F91      		pop r24
+ 304               	 ;  0 "" 2
+ 200:main.c        ****     asm("reti");
+ 305               		.loc 1 200 0
+ 306               	 ;  200 "main.c" 1
+ 307 00b4 1895      		reti
+ 308               	 ;  0 "" 2
+ 309               	/* epilogue start */
+ 201:main.c        **** }
+ 310               		.loc 1 201 0
+ 311               	/* #NOAPP */
+ 312               		.cfi_endproc
+ 313               	.LFE11:
+ 315               		.comm tx_cnt,1,1
+ 316               		.comm cur_tx,1,1
+ 317               		.comm cur_rx,1,1
+ 318               		.comm cur_touch,1,1
+ 319               		.comm cur_conf,1,1
+ 320               		.comm cur_meas,2,1
+ 321               	.Letext0:
+ 322               		.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
 DEFINED SYMBOLS
                             *ABS*:0000000000000000 main.c
-     /tmp/ccaDC1j0.s:2      *ABS*:000000000000003f __SREG__
-     /tmp/ccaDC1j0.s:3      *ABS*:000000000000003e __SP_H__
-     /tmp/ccaDC1j0.s:4      *ABS*:000000000000003d __SP_L__
-     /tmp/ccaDC1j0.s:5      *ABS*:000000000000003c __CCP__
-     /tmp/ccaDC1j0.s:6      *ABS*:0000000000000010 __tmp_reg__
-     /tmp/ccaDC1j0.s:7      *ABS*:0000000000000011 __zero_reg__
-     /tmp/ccaDC1j0.s:15     .text:0000000000000000 init
-                            *COM*:0000000000000001 sample_state
-     /tmp/ccaDC1j0.s:53     .text.startup:0000000000000000 main
-                            *COM*:0000000000000001 rx_in
-                            *COM*:0000000000000001 cur_rx_pos
-                            *COM*:0000000000000001 cur_tx_pos
-                            *COM*:0000000000000001 rx_state
-                            *COM*:0000000000000001 rx_nr_recv
+     /tmp/ccElG7WH.s:2      *ABS*:000000000000003f __SREG__
+     /tmp/ccElG7WH.s:3      *ABS*:000000000000003e __SP_H__
+     /tmp/ccElG7WH.s:4      *ABS*:000000000000003d __SP_L__
+     /tmp/ccElG7WH.s:5      *ABS*:000000000000003c __CCP__
+     /tmp/ccElG7WH.s:6      *ABS*:0000000000000010 __tmp_reg__
+     /tmp/ccElG7WH.s:7      *ABS*:0000000000000011 __zero_reg__
+     /tmp/ccElG7WH.s:15     .text:0000000000000000 init
+     /tmp/ccElG7WH.s:46     .text.startup:0000000000000000 main
                             *COM*:0000000000000001 cur_rx
-                            *COM*:0000000000000001 tx_state
-                            *COM*:0000000000000001 tx_nr_sent
-                            *COM*:0000000000000004 rx
-     /tmp/ccaDC1j0.s:167    .text:000000000000001a __vector_1
-     /tmp/ccaDC1j0.s:252    .text:000000000000003c __vector_4
-     /tmp/ccaDC1j0.s:289    .text:0000000000000046 __vector_6
-                            *COM*:0000000000000001 ocr_state
-     /tmp/ccaDC1j0.s:326    .text:0000000000000050 __vector_5
+                            *COM*:0000000000000001 cur_conf
+                            *COM*:0000000000000001 cur_touch
                             *COM*:0000000000000001 cur_tx
-                            *COM*:0000000000000001 uart_cnt
-                            *COM*:0000000000000001 tx_out
-                            *COM*:0000000000000001 bit_nr
-                            *COM*:0000000000000004 tx
+     /tmp/ccElG7WH.s:91     .text:0000000000000010 __vector_1
+     /tmp/ccElG7WH.s:125    .text:0000000000000026 __vector_5
+                            *COM*:0000000000000001 tx_cnt
+     /tmp/ccElG7WH.s:239    .text:00000000000000a0 __vector_4
+     /tmp/ccElG7WH.s:276    .text:00000000000000aa __vector_6
                             *COM*:0000000000000002 cur_meas
 
 UNDEFINED SYMBOLS

@@ -4,71 +4,36 @@
 
 #define TRUE (1)
 #define FALSE (0)
-#define TIM_OCR_START ((uint16_t)208)
-#define NEW_SAMPLE (0xFF)
-#define OLD_SAMPLE (0x00)
+
 #define CAP_TOUCH_PIN (PIN1) //TODO: set proper pin
-//next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
+
 #define OCR_INCREMENT ((uint16_t)417)
 
 
 void init(void);
 
 
-uint16_t cur_meas;
-uint8_t sample_state;
-
-typedef enum uart_state_t {
-    IDLE,
-    RECEIVING,
-    SENDING,
-    START,
-    STOP
-} uart_state_t;
-
 //the number of instructions before INT0 is executed
 #define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
-#define UART_BIT_TIME  ((uint16_t)417) //number of clock ticks @8MHz per bit
-#define UART_HALF_BIT_TIME  ((UART_BIT_TIME / 2)-ISR_OFFSET) //number of clock ticks @8MHz per bit
-#define UART_BUFF_SIZE (4)
-#define UART_RX_BIT    (PB0)
-#define UART_TX_BIT    (PB1)
-#define UART_RX_PORTx  (PORTB)
-#define UART_TX_PORTx  (PORTB)
-#define UART_RX_PINx   (PINB)
-#define UART_TX_PINx   (PINB)
 
-#define HIGH (0xFF)
-#define LOW  (0x00)
+//next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
+#define UART_BIT_TIME       ((uint16_t)417) //number of clock ticks @8MHz per bit
 
-#define UART_SET_START(port,pin) (port &= ~(1<<pin))
-#define UART_SET_STOP(port,pin)  (port |= (1<<pin))
-#define UART_GET_START(port,pin) (~port & (1<<pin))
+#define UART_OCR_OFFSET     (4+10) //4 till call, 10 till instruction
+#define UART_OCR_INC        ((UART_BIT_TIME / 2)-UART_OCR_OFFSET)
+#define UART_HALF_OCR_INC   (UART_BIT_TIME-UART_OCR_OFFSET)
 
-//uart buffers
-//TODO: probably not needed
-uint8_t tx[UART_BUFF_SIZE];
-uint8_t rx[UART_BUFF_SIZE];
+#define UART_RX_PIN    (PB2)
+#define UART_TX_PIN    (PB3)
+#define UART_START     (0)
+#define UART_STOP      (9)
 
-uart_state_t rx_state;
-uart_state_t tx_state;
+//protocol definitions
+#define SLOT_TAKEN_BIT (7)
 
-uint8_t ocr_state;
-uint8_t bit_nr;
-uint8_t rx_in;
-uint8_t cur_rx;
-uint8_t cur_tx;
-uint8_t tx_out;
-uint8_t rx_nr_recv;
-uint8_t tx_nr_sent;
-uint8_t cur_rx_pos;
-uint8_t cur_tx_pos;
-uint8_t uart_cnt;
-
-
-
-
-static inline void handle_uart_io(void);
+uint16_t       cur_meas;
+uint8_t cur_conf,cur_touch;
+uint8_t cur_rx,cur_tx,tx_cnt;
 
 int main(void) {
 
@@ -76,7 +41,45 @@ int main(void) {
 
   while(TRUE){
 
-      handle_uart_io();
+      //if uart cycle has completed (both interrupts disabled) prepare next
+      if( ( EIMSK & (1 << INT0) ) && ( TIMSK0 & (1 << OCIE0B) ) )
+      {
+
+          //check if  is for us
+          if(cur_rx & (1 << SLOT_TAKEN_BIT)){
+              //if for us, store settings, refresh button state
+              cur_conf = cur_rx;
+              cur_tx = cur_rx | (1<<SLOT_TAKEN_BIT) | cur_touch;
+          } else {
+              //if not for us pass on untouched
+              cur_tx = cur_rx;
+          }
+
+          //go to uart idle state (enable EXTI)
+          EIFR  = (1<<INTF0); //clear external interrupt state
+          EIMSK = (1 << INT0);
+
+      }
+
+
+
+//      //is measurement is done, store and start next
+//      if(TIFR0 & (1<<ICF0)){
+//
+//          //calculate duration
+//          cur_meas = ((uint16_t)ICR0) - cur_meas;
+//
+//          //----------------------------
+//          //critical section (keep short)
+//          cli(); //disable interrupts
+//          //store timer value
+//          cur_meas = TCNT0;
+//          //set output pin
+//
+//          sei(); //enable interrupts
+//          //----------------------------
+//
+//      }
 
 
 
@@ -84,81 +87,6 @@ int main(void) {
   }
 
   return 0;
-}
-
-
-static inline void handle_uart_io(void){
-
-    //TODO: error checking here (has the sampling interrupt occured?)
-
-    //add sample to state, if byte is complete, store in buffer
-
-    switch (rx_state){
-
-    case IDLE:
-        if(rx_in == 0) { //if 0 was received
-            rx_state = RECEIVING;
-            rx_nr_recv=0;
-            cur_rx = 0;
-        }
-        break;
-
-    case RECEIVING :
-        //increment number received bits
-        rx_nr_recv++;
-        //store received bit
-        cur_rx |= (rx_in << rx_nr_recv);
-        //check if full byte is received
-        if(rx_nr_recv == 8){
-            rx_state = STOP;
-        }
-        break;
-
-    case STOP :
-        if(rx_in){
-            rx[cur_rx_pos] = cur_rx;
-            rx_state = IDLE;
-        }
-        break;
-    }
-
-
-    //handle TX
-    switch (tx_state){
-
-    case IDLE:
-        if(cur_tx_pos != 0) { //if data is waiting
-            tx_out = LOW;
-            tx_state = SENDING;
-            tx_nr_sent=0;
-        } else {
-            tx_out = HIGH;
-        }
-        break;
-
-    case SENDING :
-        //increment number received bits
-        tx_nr_sent++;
-        //store received bit
-        tx_out |= (cur_tx >> tx_nr_sent) & (0x01);
-        //check if full byte is received
-        if(tx_nr_sent == 8){
-            tx_state = STOP;
-        }
-        break;
-
-    case STOP :
-        tx_out = HIGH;
-        tx_state = IDLE;
-        break;
-    }
-
-    //determine new output bit
-        //if in progress, continue
-        //if not in progress, but byte in buffer, start
-        //if neither, send 1;
-
-
 }
 
 
@@ -177,7 +105,6 @@ void init(void){
     TIMSK0 = (1<<TOIE0) | (1<<OCIE0A) | (1<<OCIE0B);
     //set first compare value to 1/19200/2 = 26us = 208 tim-ticks @ 8MHz
     //TODO: verify 16 bit access
-    OCR0A = TIM_OCR_START;
 
 
     //GPIO init
@@ -185,8 +112,6 @@ void init(void){
     //set one pin to output for uart
     //the other to input with pullup for uart
 
-    //set sample state to old
-    sample_state = OLD_SAMPLE;
 
 }
 
@@ -203,71 +128,77 @@ void init(void){
 //of the cap measurement and UART sample times. Be careful when
 //changing
 
-//external interrupt
-ISR(INT0_vect,ISR_NAKED){
-    //enter interrupt
-    asm("push r16");
-    asm("in r16,__SREG__");
-    asm("push r24");
-    asm("push r25");
-    //OCR0A = TCNT0+UART_HALF_BIT_TIME;
-    asm("in r24,40");
-    asm("in r25,41");
-    asm("subi r24,lo8(-(194))");
-    asm("sbci r25,hi8(-(194))");
-    asm("out 39,r25");
-    asm("out 38,r24");
-    //EIMSK = 0x00;
-    asm("ldi r24,lo8(0)");
-    asm("out 19,r24");
-    //exit interrupt
-    asm("pop r25");
-    asm("pop r24");
-    asm("out __SREG__,r16");
-    asm("pop r16");
-    asm("reti");
+//external interrupt (start of UART RX)
+ISR(INT0_vect){
+
+    //allow touch to interrupt
+    sei();
+    //set first sample time
+    OCR0A = TCNT0+UART_HALF_OCR_INC;
+    //disable external interrupt, enable COMPA interrupt
+    EIMSK = 0x00;
+    TIMSK0 |= (1<<OCIE0B);
+
 }
-
-
-//TIM0 overflow handler, measurement start
-ISR(TIM0_OVF_vect, ISR_NAKED){
-    //set cap_touch pin to input pin to input
-    //DDRB = (1 << CAP_TOUCH_PIN);
-    asm("push r24");
-    asm("ldi r24,lo8(2)");
-    asm("out 1,r24");
-    asm("pop r24");
-    asm("reti");
-}
-
-
-//TIM0 overflow handler
-ISR(TIM0_COMPB_vect,ISR_NAKED){
-    //only enable OCR0A interrupt
-    //TIMSK0 = oc_state;
-    asm("push r24");
-    asm("lds r24,ocr_state");
-    asm("out 43,r24");
-    asm("pop r24");
-    asm("reti");
-}
-
 
 //OCR0A interrupt handler
-ISR(TIM0_COMPA_vect){
+ISR(TIM0_COMPB_vect){
 
-    //update OCR0A
-    OCR0A += UART_BIT_TIME - ISR_OFFSET;
-    //sample input
-    cur_rx |= ((PINB >> 2) & 0x01) << 1;
-    //set output
-    PINB |= cur_tx;
-    //increment count
-    uart_cnt++;
-    if(uart_cnt > 9){
-        //disable OCR0A interrupt until processed
-        TIMSK0 &= ~(1 << OCIE0A);
-        ocr_state = 0x00;
+    //allow touch to interrupt
+    sei();
+    //update OCR0A (always to reduce jitter)
+    OCR0A += UART_OCR_INC;
+
+    //update RX and TX
+    if(tx_cnt == UART_START){
+        //don't store sample, set TX low
+        PORTB &= ~(1 << UART_TX_PIN);
+        //icrement tx counter
+        tx_cnt++;
+    } else if (tx_cnt < UART_STOP) {
+        //store RX samle
+        cur_rx |= ((PINB >> 2) & 0x01);
+        cur_rx = (cur_rx << 1);
+        //set TX output
+        PORTB  = (PORTB & ~(1 << UART_TX_PIN)) | ((cur_tx & 0x01) << UART_TX_PIN);
+        cur_tx = (cur_tx >> 1);
+        //increment tx counter
+    } else {
+        //don't sample, set TX high
+        PORTB |= (1<<UART_TX_PIN);
+        //enable external interrupt, enable COMPA interrupt
+        //EIMSK = 0x01; TODO:think about sync with main
+        TIMSK0 &= ~(1<<OCIE0B);
+        //we are done, set tx_counter to 0
+        tx_cnt = 0x00;
     }
 
 }
+
+
+//TIM0 overflow handler,
+//Start touch measurement by setting pin to input
+ISR(TIM0_OVF_vect, ISR_NAKED){
+    //set cap_touch pin to input pin to input
+    //DDRB ^= (1 << CAP_TOUCH_PIN);
+    asm("push r24");
+    asm("in r24,1-0");
+    asm("ldi r25,lo8(2)");
+    asm("eor r24,r25");
+    asm("out 1-0,r24");
+    asm("reti");
+}
+
+
+////TIM0 OCR0B match handler
+////Disable timer interrupts for touch, until main has processed
+////measurement
+//ISR(TIM0_CAPT_vect,ISR_NAKED){
+//    //TIMSK0 &= (1<<OCIE0B);
+//    asm("push r24");
+//    asm("in r24,43");
+//    asm("andi r24,lo8(4)");
+//    asm("out 43,r24");
+//    asm("pop r24");
+//    asm("reti");
+//}
