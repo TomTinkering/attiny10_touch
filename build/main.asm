@@ -270,28 +270,20 @@ __vector_6:
 	.type	__vector_4, @function
 __vector_4:
 .LFB10:
-	.loc 1 181 0
+	.loc 1 183 0
 	.cfi_startproc
 /* prologue: naked */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 183 0
-	in r24,1-0
-	ldi r25,lo8(2)
-	eor r24,r25
-	out 1-0,r24
-	.loc 1 188 0
-/* #APP */
- ;  188 "main.c" 1
-	reti
- ;  0 "" 2
+	.loc 1 185 0
+	cbi 1-0,1
 /* epilogue start */
-	.loc 1 189 0
-/* #NOAPP */
+	.loc 1 190 0
 	.cfi_endproc
 .LFE10:
 	.size	__vector_4, .-__vector_4
+	.comm meas_flag,1,1
 	.comm tx_cnt,1,1
 	.comm cur_tx,1,1
 	.comm cur_rx,1,1
@@ -302,15 +294,15 @@ __vector_4:
 	.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
 	.section	.debug_info,"",@progbits
 .Ldebug_info0:
-	.long	0x18e
+	.long	0x1a0
 	.word	0x2
 	.long	.Ldebug_abbrev0
 	.byte	0x4
 	.uleb128 0x1
-	.long	.LASF19
-	.byte	0x1
 	.long	.LASF20
+	.byte	0x1
 	.long	.LASF21
+	.long	.LASF22
 	.long	0
 	.long	0
 	.long	.Ldebug_ranges0+0
@@ -371,7 +363,7 @@ __vector_4:
 	.sleb128 2
 	.uleb128 0x6
 	.byte	0x1
-	.long	.LASF22
+	.long	.LASF23
 	.byte	0x1
 	.byte	0x26
 	.byte	0x1
@@ -404,7 +396,7 @@ __vector_4:
 	.byte	0x1
 	.long	.LASF12
 	.byte	0x1
-	.byte	0xb5
+	.byte	0xb7
 	.byte	0x1
 	.long	.LFB10
 	.long	.LFE10
@@ -501,6 +493,15 @@ __vector_4:
 	.byte	0x5
 	.byte	0x3
 	.long	tx_cnt
+	.uleb128 0x9
+	.long	.LASF19
+	.byte	0x1
+	.byte	0xb3
+	.long	0x30
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	meas_flag
 	.byte	0
 	.section	.debug_abbrev,"",@progbits
 .Ldebug_abbrev0:
@@ -765,21 +766,23 @@ __vector_4:
 	.section	.debug_line,"",@progbits
 .Ldebug_line0:
 	.section	.debug_str,"MS",@progbits,1
+.LASF19:
+	.string	"meas_flag"
 .LASF9:
 	.string	"init"
 .LASF15:
 	.string	"cur_rx"
 .LASF16:
 	.string	"cur_tx"
-.LASF21:
+.LASF22:
 	.string	"/home/tomv/workspace/attiny10_touch/"
 .LASF1:
 	.string	"unsigned char"
 .LASF6:
 	.string	"long unsigned int"
-.LASF19:
+.LASF20:
 	.string	"GNU C 4.6.2"
-.LASF22:
+.LASF23:
 	.string	"main"
 .LASF17:
 	.string	"tx_cnt"
@@ -797,7 +800,7 @@ __vector_4:
 	.string	"cur_conf"
 .LASF7:
 	.string	"long long int"
-.LASF20:
+.LASF21:
 	.string	"main.c"
 .LASF10:
 	.string	"__vector_1"

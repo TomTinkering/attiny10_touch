@@ -5,12 +5,15 @@
 #define TRUE (1)
 #define FALSE (0)
 
-#define CAP_TOUCH_PIN (PIN1) //TODO: set proper pin
+
 
 #define OCR_INCREMENT ((uint16_t)417)
 
 
 void init(void);
+
+#define TOUCH_TIMEOUT ((uint16_t)40000) //roughly 4ms @ 8MHz
+#define TOUCH_PIN (PIN1) //TODO: set proper pin (change interrupt)
 
 
 //the number of instructions before INT0 is executed
@@ -61,27 +64,17 @@ int main(void) {
 
       }
 
-
-
-//      //is measurement is done, store and start next
-//      if(TIFR0 & (1<<ICF0)){
-//
-//          //calculate duration
-//          cur_meas = ((uint16_t)ICR0) - cur_meas;
-//
-//          //----------------------------
-//          //critical section (keep short)
-//          cli(); //disable interrupts
-//          //store timer value
-//          cur_meas = TCNT0;
-//          //set output pin
-//
-//          sei(); //enable interrupts
-//          //----------------------------
-//
-//      }
-
-
+      //check for touch timeout
+      if( TCNT0 >= TOUCH_TIMEOUT) {
+          //disable touch interrupt
+          TIMSK0 &= (1 << TOIE0);
+          //set touch pin to output
+          DDRB |= (1 << TOUCH_PIN)
+          //process measurement
+                  //....
+          //start new measurement
+          TIMSK0 |= (1 << TOIE0);
+      }
 
 
   }
@@ -176,16 +169,14 @@ ISR(TIM0_COMPB_vect){
 }
 
 
+uint8_t meas_flag;
+
 //TIM0 overflow handler,
 //Start touch measurement by setting pin to input
 ISR(TIM0_OVF_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
-    //DDRB ^= (1 << CAP_TOUCH_PIN);
-    asm("push r24");
-    asm("in r24,1-0");
-    asm("ldi r25,lo8(2)");
-    asm("eor r24,r25");
-    asm("out 1-0,r24");
+    //DDRB &= ~(1 << TOUCH_PIN);
+    asm("cbi 1,1");
     asm("reti");
 }
 
