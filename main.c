@@ -7,14 +7,16 @@
 
 
 
-#define OCR_INCREMENT ((uint16_t)417)
-
 
 void init(void);
 
+
+
+#define DEFAULT_CONFIGURATION (0b10101010) //TODO: change to proper setting
+
 #define TOUCH_TIMEOUT ((uint16_t)40000) //roughly 4ms @ 8MHz
 #define TOUCH_PIN (PIN1) //TODO: set proper pin (change interrupt)
-
+#define LED_PIN   (PIN0)
 
 //the number of instructions before INT0 is executed
 #define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
@@ -64,17 +66,21 @@ int main(void) {
 
       }
 
-      //check for touch timeout
-      if( TCNT0 >= TOUCH_TIMEOUT) {
+      //check for touch timeout / process measurement
+      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
           //disable touch interrupt
           TIMSK0 &= (1 << TOIE0);
           //set touch pin to output
-          DDRB |= (1 << TOUCH_PIN)
+          DDRB |= (1 << TOUCH_PIN);
           //process measurement
                   //....
           //start new measurement
           TIMSK0 |= (1 << TOIE0);
       }
+
+
+      //process configuration state
+
 
 
   }
@@ -85,7 +91,10 @@ int main(void) {
 
 void init(void){
 
+    cli(); //disable interrupts for the time being
+
     //set clock to 8Mhz, no prescaler, factory calibration
+    //TODO: magic value for this to work, see datasheet
     CLKMSR = 0x00;
     OSCCAL = 0x00;
     CLKPSR = 0x00;
@@ -93,11 +102,13 @@ void init(void){
     //set timer to CTC mode, no output compare, no prescaler
     //reset on OCROB = floor(65536 / OCR_INCREMENT) * OCR_INCREMEN
     //interrupt on OVF and OCIE0A
-    TCCR0A = 0x00;
-    TCCR0B = 0x00; //leave timer disabled for now (1<<CS00);
-    TIMSK0 = (1<<TOIE0) | (1<<OCIE0A) | (1<<OCIE0B);
-    //set first compare value to 1/19200/2 = 26us = 208 tim-ticks @ 8MHz
-    //TODO: verify 16 bit access
+    TCCR0A = (1 << COM0A1) | (1 << COM0A0);
+
+    //enable input capture noise filter, trigger on rising edge ( 0->1)
+    //leave timer disabled for now (no clock source)
+    TCCR0B = (1 << ICNC0) | (1 << ICES0);
+    TIMSK0 = 0x00; //disable interrupts for now
+
 
 
     //GPIO init
@@ -105,6 +116,12 @@ void init(void){
     //set one pin to output for uart
     //the other to input with pullup for uart
 
+    //since all interrupts are disabled, cur_rx will be read as first config
+    cur_rx = DEFAULT_CONFIGURATION;
+    //enable interrupt, start the timer and let the magic begin
+    TIMSK0 |= (1 << TOIE0);
+    TCCR0B |= (1 << CS00);
+    sei();
 
 }
 
@@ -117,15 +134,12 @@ void init(void){
 //INTERRUPT HANDLERS
 //=====================================
 
-//Warning, interrupts are ISR_NAKED to reduce jitter in the start
-//of the cap measurement and UART sample times. Be careful when
-//changing
-
 //external interrupt (start of UART RX)
 ISR(INT0_vect){
 
     //allow touch to interrupt
     sei();
+
     //set first sample time
     OCR0A = TCNT0+UART_HALF_OCR_INC;
     //disable external interrupt, enable COMPA interrupt
@@ -139,6 +153,7 @@ ISR(TIM0_COMPB_vect){
 
     //allow touch to interrupt
     sei();
+
     //update OCR0A (always to reduce jitter)
     OCR0A += UART_OCR_INC;
 
@@ -169,27 +184,23 @@ ISR(TIM0_COMPB_vect){
 }
 
 
-uint8_t meas_flag;
+
+#if LED_PIN != PIN0
+#  error "change interrupt routine when changing LED_PIN define"
+#endif
+#if TOUCH_PIN != PIN1
+#  error "change interrupt routine when changing TOUCH_PIN define"
+#endif
 
 //TIM0 overflow handler,
 //Start touch measurement by setting pin to input
+//also clear led pin, for PWM (pwm mode does not allow 0xFFFF as top....)
 ISR(TIM0_OVF_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
+    //PORTB &= ~(1 << LED_PIN);
     //DDRB &= ~(1 << TOUCH_PIN);
+    asm("cbi 2,0");
     asm("cbi 1,1");
     asm("reti");
 }
 
-
-////TIM0 OCR0B match handler
-////Disable timer interrupts for touch, until main has processed
-////measurement
-//ISR(TIM0_CAPT_vect,ISR_NAKED){
-//    //TIMSK0 &= (1<<OCIE0B);
-//    asm("push r24");
-//    asm("in r24,43");
-//    asm("andi r24,lo8(4)");
-//    asm("out 43,r24");
-//    asm("pop r24");
-//    asm("reti");
-//}
