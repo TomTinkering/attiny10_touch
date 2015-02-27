@@ -11,6 +11,32 @@
 void init(void);
 
 
+typedef enum state_t {
+
+    LED_EN          = 0,
+    SET_LED_DIRECT  = 1,
+    TOUCHED         = 2,
+    RESERVED0       = 3,
+    RESERVED1       = 4,
+    RESERVED2       = 5,
+    RESERVED3       = 6,
+    TAKEN_PASSED    = 7,
+
+} state_t;
+
+typedef enum msg_t {
+
+    MSG_LED_EN      = 0,
+    MSG_LED_DIRECT  = 1,
+    MSG_IS_TOUCHED  = 2,
+    MSG_RESERVED0   = 3,
+    MSG_RESERVED1   = 4,
+    MSG_RESERVED2   = 5,
+    MSG_RESERVED3   = 6,
+    MSG_SLOT_TAKEN  = 7,
+
+} msg_t;
+
 
 #define DEFAULT_CONFIGURATION (0b10101010) //TODO: change to proper setting
 
@@ -36,9 +62,14 @@ void init(void);
 //protocol definitions
 #define SLOT_TAKEN_BIT (7)
 
-uint16_t       cur_meas;
-uint8_t cur_conf,cur_touch;
-uint8_t cur_rx,cur_tx,tx_cnt;
+#define IS_SET(var,b)  (var & (1 << b))
+
+uint16_t    cur_meas;
+uint8_t     cur_conf,cur_touch;
+uint8_t     cur_rx,cur_tx,tx_cnt;
+uint8_t     state;
+uint8_t     led_val;
+
 
 int main(void) {
 
@@ -50,11 +81,14 @@ int main(void) {
       if( ( EIMSK & (1 << INT0) ) && ( TIMSK0 & (1 << OCIE0B) ) )
       {
 
-          //check if  is for us
-          if(cur_rx & (1 << SLOT_TAKEN_BIT)){
+          //check if message is for us
+          if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
               //if for us, store settings, refresh button state
               cur_conf = cur_rx;
-              cur_tx = cur_rx | (1<<SLOT_TAKEN_BIT) | cur_touch;
+              cur_tx = cur_rx | (1<<MSG_SLOT_TAKEN) | (state & (1 << TOUCHED));
+              //update state flags
+              state &= ~(1 << TAKEN_PASSED) & ~(1 << TOUCHED);
+
           } else {
               //if not for us pass on untouched
               cur_tx = cur_rx;
@@ -79,7 +113,14 @@ int main(void) {
       }
 
 
-      //process configuration state
+      //set led brightness based on state
+      if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+          OCR0AH = led_val;
+          OCR0AL = 0x00;
+      } else {
+          OCR0AH = 0x00;
+          OCR0AL = 0x00;
+      }
 
 
 
@@ -99,17 +140,14 @@ void init(void){
     OSCCAL = 0x00;
     CLKPSR = 0x00;
 
-    //set timer to CTC mode, no output compare, no prescaler
-    //reset on OCROB = floor(65536 / OCR_INCREMENT) * OCR_INCREMEN
-    //interrupt on OVF and OCIE0A
-    TCCR0A = (1 << COM0A1) | (1 << COM0A0);
-
+    //set timer normal mode (0xFFFF top is convenient for UART)
+    //disconnect output compare functionality
     //enable input capture noise filter, trigger on rising edge ( 0->1)
     //leave timer disabled for now (no clock source)
+    TCCR0A = 0x00;
     TCCR0B = (1 << ICNC0) | (1 << ICES0);
-    TIMSK0 = 0x00; //disable interrupts for now
-
-
+    //disable interrupts for now
+    TIMSK0 = 0x00;
 
     //GPIO init
     //set led and touch to output
@@ -118,7 +156,7 @@ void init(void){
 
     //since all interrupts are disabled, cur_rx will be read as first config
     cur_rx = DEFAULT_CONFIGURATION;
-    //enable interrupt, start the timer and let the magic begin
+    //enable ovf interrupt, start the timer and let the magic begin
     TIMSK0 |= (1 << TOIE0);
     TCCR0B |= (1 << CS00);
     sei();
@@ -186,10 +224,10 @@ ISR(TIM0_COMPB_vect){
 
 
 #if LED_PIN != PIN0
-#  error "change interrupt routine when changing LED_PIN define"
+#  error "change interrupt routines when changing LED_PIN definition"
 #endif
 #if TOUCH_PIN != PIN1
-#  error "change interrupt routine when changing TOUCH_PIN define"
+#  error "change interrupt routines when changing TOUCH_PIN definition"
 #endif
 
 //TIM0 overflow handler,
@@ -201,6 +239,18 @@ ISR(TIM0_OVF_vect, ISR_NAKED){
     //DDRB &= ~(1 << TOUCH_PIN);
     asm("cbi 2,0");
     asm("cbi 1,1");
+    asm("reti");
+}
+
+
+//kind of stupid, but needed since non-pwm mode makes PWM generation hard
+//cannot set to PWM mode because the TOP values are either changing
+//OC0A, OC0B and ICR, or TOP value is too low (0x03FF max).
+ISR(TIM0_COMPA_vect, ISR_NAKED){
+    //set cap_touch pin to input pin to input
+    //PORTB &= ~(1 << LED_PIN);
+    //DDRB &= ~(1 << TOUCH_PIN);
+    asm("sbi 2,0");
     asm("reti");
 }
 

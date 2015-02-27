@@ -454,12 +454,48 @@ _delay_us(double __us)
 # 3 "main.c" 2
 # 1 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/avr/interrupt.h" 1 3
 # 4 "main.c" 2
-# 13 "main.c"
+
+
+
+
+
+
+
 void init(void);
-# 37 "main.c"
+
+
+typedef enum state_t {
+
+    LED_EN = 0,
+    SET_LED_DIRECT = 1,
+    TOUCHED = 2,
+    RESERVED0 = 3,
+    RESERVED1 = 4,
+    RESERVED2 = 5,
+    RESERVED3 = 6,
+    TAKEN_PASSED = 7,
+
+} state_t;
+
+typedef enum msg_t {
+
+    MSG_LED_EN = 0,
+    MSG_LED_DIRECT = 1,
+    MSG_IS_TOUCHED = 2,
+    MSG_RESERVED0 = 3,
+    MSG_RESERVED1 = 4,
+    MSG_RESERVED2 = 5,
+    MSG_RESERVED3 = 6,
+    MSG_SLOT_TAKEN = 7,
+
+} msg_t;
+# 67 "main.c"
 uint16_t cur_meas;
 uint8_t cur_conf,cur_touch;
 uint8_t cur_rx,cur_tx,tx_cnt;
+uint8_t state;
+uint8_t led_val;
+
 
 int main(void) {
 
@@ -472,10 +508,13 @@ int main(void) {
       {
 
 
-          if(cur_rx & (1 << (7))){
+          if( (cur_rx & (1 << MSG_SLOT_TAKEN)) && (state & (1 << TAKEN_PASSED)) ){
 
               cur_conf = cur_rx;
-              cur_tx = cur_rx | (1<<(7)) | cur_touch;
+              cur_tx = cur_rx | (1<<MSG_SLOT_TAKEN) | (state & (1 << TOUCHED));
+
+              state &= ~(1 << TAKEN_PASSED) & ~(1 << TOUCHED);
+
           } else {
 
               cur_tx = cur_rx;
@@ -488,7 +527,7 @@ int main(void) {
       }
 
 
-      if( ((*(volatile uint16_t *)((0x28) + 0x00)) >= ((uint16_t)40000)) && ((*(volatile uint8_t *)((0x2A) + 0x00)) & (1 << 0)) ) {
+      if( ((*(volatile uint16_t *)((0x28) + 0x00)) >= ((uint16_t)40000)) ) {
 
           (*(volatile uint8_t *)((0x2B) + 0x00)) &= (1 << 0);
 
@@ -501,6 +540,12 @@ int main(void) {
 
 
 
+      if( (state & (1 << LED_EN)) || ((state & (1 << SET_LED_DIRECT)) && (state & (1 << TOUCHED))) ){
+          (*(volatile uint8_t *)((0x27) + 0x00)) = led_val;
+          (*(volatile uint8_t *)((0x26) + 0x00)) = 0x00;
+      }
+
+
 
   }
 
@@ -510,6 +555,9 @@ int main(void) {
 
 void init(void){
 
+    __asm__ __volatile__ ("cli" ::: "memory");
+
+
 
     (*(volatile uint8_t *)((0x37) + 0x00)) = 0x00;
     (*(volatile uint8_t *)((0x39) + 0x00)) = 0x00;
@@ -518,12 +566,26 @@ void init(void){
 
 
 
+
     (*(volatile uint8_t *)((0x2E) + 0x00)) = 0x00;
-    (*(volatile uint8_t *)((0x2D) + 0x00)) = 0x00;
-    (*(volatile uint8_t *)((0x2B) + 0x00)) = (1<<0) | (1<<1) | (1<<2);
-# 111 "main.c"
+    (*(volatile uint8_t *)((0x2D) + 0x00)) = (1 << 7) | (1 << 6);
+
+    (*(volatile uint8_t *)((0x2B) + 0x00)) = 0x00;
+
+
+
+
+
+
+
+    cur_rx = (0b10101010);
+
+    (*(volatile uint8_t *)((0x2B) + 0x00)) |= (1 << 0);
+    (*(volatile uint8_t *)((0x2D) + 0x00)) |= (1 << 0);
+    __asm__ __volatile__ ("sei" ::: "memory");
+
 }
-# 123 "main.c"
+# 173 "main.c"
 void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_1 (void){
 
 
@@ -571,13 +633,24 @@ void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) ; void 
     }
 
 }
-
-
-
-
+# 233 "main.c"
 void __vector_4 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_4 (void){
 
 
+
+    asm("cbi 2,0");
     asm("cbi 1,1");
+    asm("reti");
+}
+
+
+
+
+
+void __vector_5 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_5 (void){
+
+
+
+    asm("sbi 2,0");
     asm("reti");
 }
