@@ -93,169 +93,207 @@
   77:main.c        **** #define CONF_BIT_MASK (B(MSG_SLOT_TAKEN) | B(MSG_RESERVED) | B(MSG_IS_TOUCHED))
   78:main.c        **** #define CONF_LED_MASK (B(LED0) | B(LED1) | B(LED2))
   79:main.c        **** 
-  80:main.c        **** uint16_t    cur_meas;
-  81:main.c        **** uint8_t     cur_conf,cur_touch;
-  82:main.c        **** uint8_t     cur_rx,cur_tx,tx_cnt;
-  83:main.c        **** uint8_t     state;
-  84:main.c        **** uint8_t     led_val;
-  85:main.c        **** 
-  86:main.c        **** 
-  87:main.c        **** int main(void) {
-  88:main.c        **** 
-  89:main.c        ****   init();
+  80:main.c        **** 
+  81:main.c        **** //multiplier to avoid floating point...
+  82:main.c        **** #define FILTER_MAX (1024)
+  83:main.c        **** //portion of multiplier that is given to new value (USE POWER OF 2!!)
+  84:main.c        **** #define FILTER_NEW (32)
+  85:main.c        **** //portion of multiplier that is given to running average
+  86:main.c        **** #define FILTER_AVG (FILTER_MAX-FILTER_NEW)
+  87:main.c        **** //low pass filter, use sparingly, costly instruction wise
+  88:main.c        **** #define TOUCH_FILTER_LP(avg,new) ((uint16_t)(( (((uint32_t)avg)*FILTER_AVG) + (((uint32_t)new)*FILT
+  89:main.c        **** 
   90:main.c        **** 
-  91:main.c        ****   while(TRUE){
-  92:main.c        **** 
-  93:main.c        ****       //if uart cycle has completed (both interrupts disabled) prepare next
-  94:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
-  95:main.c        ****       {
+  91:main.c        **** //level above measurement noise level to detect touch
+  92:main.c        **** #define TOUCH_THRESHOLD (512)
+  93:main.c        **** //number of measurements in a row, that are above threshold needed to trigger touch
+  94:main.c        **** #define TOUCH_VALID_CNT (2)
+  95:main.c        **** 
   96:main.c        **** 
-  97:main.c        ****           //check if message is for us
-  98:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
-  99:main.c        **** 
- 100:main.c        ****               //if for us, store settings, refresh button state
- 101:main.c        ****               state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
- 102:main.c        ****               cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
- 103:main.c        ****               //update state flags
- 104:main.c        ****               state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
- 105:main.c        ****               //set led PWM output based on new config (only control upper bits, rest 1)
- 106:main.c        ****               OCR0AH = ~CONF_LED_MASK | state;
- 107:main.c        ****               OCR0AL = 0xFF;
+  97:main.c        **** uint16_t    cur_meas;
+  98:main.c        **** uint8_t     cur_conf,cur_touch;
+  99:main.c        **** uint8_t     cur_rx,cur_tx,tx_cnt;
+ 100:main.c        **** uint8_t     state;
+ 101:main.c        **** uint8_t     led_val;
+ 102:main.c        **** 
+ 103:main.c        **** uint8_t     touch_cnt;
+ 104:main.c        **** uint16_t    touch_new;
+ 105:main.c        **** uint16_t    touch_avg; //use sparsely on 8-bit machine...
+ 106:main.c        **** 
+ 107:main.c        **** 
  108:main.c        **** 
- 109:main.c        ****           } else {
- 110:main.c        ****               //if not for us pass on untouched
- 111:main.c        ****               cur_tx = cur_rx;
- 112:main.c        ****           }
- 113:main.c        **** 
- 114:main.c        ****           //go to uart idle state (enable EXTI)
- 115:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
- 116:main.c        ****           EIMSK = (1 << INT0);
- 117:main.c        **** 
- 118:main.c        ****       }
- 119:main.c        **** 
- 120:main.c        ****       //check for touch timeout / process measurement
- 121:main.c        ****       if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
- 122:main.c        ****           //disable touch interrupt
- 123:main.c        ****           CLR(TIMSK0,TOIE0);
- 124:main.c        ****           //set touch pin to output
- 125:main.c        ****           SET(DDRB,TOUCH_PIN);
- 126:main.c        ****           //process measurement
- 127:main.c        ****                   //....
- 128:main.c        ****           //start new measurement
- 129:main.c        ****           SET(TIMSK0,TOIE0);
- 130:main.c        ****       }
- 131:main.c        **** 
- 132:main.c        **** 
- 133:main.c        ****       //enable or disable led based on system state
- 134:main.c        ****       if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
- 135:main.c        ****           //set led pin to output
- 136:main.c        ****           SET(DDRB,LED_PIN);
- 137:main.c        ****           CLR(PUEB,LED_PIN);
- 138:main.c        ****       } else { //turn off led
- 139:main.c        ****           //just setting pin to input is enough
- 140:main.c        ****           CLR(DDRB,LED_PIN);
- 141:main.c        ****           SET(PUEB,LED_PIN);
- 142:main.c        ****       }
- 143:main.c        **** 
+ 109:main.c        **** int main(void) {
+ 110:main.c        **** 
+ 111:main.c        ****   init();
+ 112:main.c        **** 
+ 113:main.c        ****   while(TRUE){
+ 114:main.c        **** 
+ 115:main.c        ****       //if uart cycle has completed (both interrupts disabled) prepare next
+ 116:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
+ 117:main.c        ****       {
+ 118:main.c        ****           asm("nop");
+ 119:main.c        ****           //check if message is for us
+ 120:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+ 121:main.c        **** 
+ 122:main.c        ****               //if for us, store settings, refresh button state
+ 123:main.c        ****               state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
+ 124:main.c        ****               cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
+ 125:main.c        ****               //update state flags
+ 126:main.c        ****               state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
+ 127:main.c        ****               //set led PWM output based on new config (only control upper bits, rest 1)
+ 128:main.c        ****               OCR0AH = ~CONF_LED_MASK | state;
+ 129:main.c        ****               OCR0AL = 0xFF;
+ 130:main.c        **** 
+ 131:main.c        ****           } else {
+ 132:main.c        ****               //if not for us pass on untouched
+ 133:main.c        ****               cur_tx = cur_rx;
+ 134:main.c        ****           }
+ 135:main.c        **** 
+ 136:main.c        ****           //go to uart idle state (enable EXTI)
+ 137:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
+ 138:main.c        ****           EIMSK = (1 << INT0);
+ 139:main.c        ****           asm("nop");
+ 140:main.c        **** 
+ 141:main.c        ****       //uart is only processed at end of each byte, leave all the other time for
+ 142:main.c        ****       //processing measurements (this possibly allows higher UART speeds)
+ 143:main.c        ****       } else {
  144:main.c        **** 
  145:main.c        **** 
- 146:main.c        ****   }
- 147:main.c        **** 
- 148:main.c        ****   //should not reach
- 149:main.c        ****   return 0;
- 150:main.c        **** }
- 151:main.c        **** 
- 152:main.c        **** 
- 153:main.c        **** void init(void){
-  18               		.loc 1 153 0
+ 146:main.c        **** 
+ 147:main.c        ****           //check for touch timeout / process measurement
+ 148:main.c        ****           if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
+ 149:main.c        **** 
+ 150:main.c        ****               //get input capture time, or limit if no capture occured
+ 151:main.c        ****               touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+ 152:main.c        ****               //determine new running average
+ 153:main.c        ****               touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
+ 154:main.c        ****               //compare new measurement to running average
+ 155:main.c        ****               if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
+ 156:main.c        ****                   touch_cnt++;
+ 157:main.c        ****                   if(touch_cnt >= TOUCH_VALID_CNT){
+ 158:main.c        ****                       touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+ 159:main.c        ****                       SET(state,TOUCHED);
+ 160:main.c        ****                   }
+ 161:main.c        ****               } else {
+ 162:main.c        ****                   touch_cnt = 0;
+ 163:main.c        ****               }
+ 164:main.c        **** 
+ 165:main.c        ****               //start new measurement (clear ICF0, set pin to LOW)
+ 166:main.c        ****               SET(TIFR0,ICF0);
+ 167:main.c        ****               CLR(PORTB,TOUCH_PIN);
+ 168:main.c        ****               SET(DDRB,TOUCH_PIN);
+ 169:main.c        ****           }
+ 170:main.c        **** 
+ 171:main.c        ****           //enable or disable led based on system state
+ 172:main.c        ****           if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+ 173:main.c        ****               //set led pin to output
+ 174:main.c        ****               SET(DDRB,LED_PIN);
+ 175:main.c        ****               CLR(PUEB,LED_PIN);
+ 176:main.c        ****           } else { //turn off led
+ 177:main.c        ****               //just setting pin to input is enough
+ 178:main.c        ****               CLR(DDRB,LED_PIN);
+ 179:main.c        ****               SET(PUEB,LED_PIN);
+ 180:main.c        ****           }
+ 181:main.c        **** 
+ 182:main.c        ****       }
+ 183:main.c        **** 
+ 184:main.c        ****   }
+ 185:main.c        **** 
+ 186:main.c        ****   //should not reach
+ 187:main.c        ****   return 0;
+ 188:main.c        **** }
+ 189:main.c        **** 
+ 190:main.c        **** 
+ 191:main.c        **** void init(void){
+  18               		.loc 1 191 0
   19               		.cfi_startproc
   20               	/* prologue: function */
   21               	/* frame size = 0 */
   22               	/* stack size = 0 */
   23               	.L__stack_usage = 0
- 154:main.c        **** 
- 155:main.c        ****     cli(); //disable interrupts for the time being
-  24               		.loc 1 155 0
+ 192:main.c        **** 
+ 193:main.c        ****     cli(); //disable interrupts for the time being
+  24               		.loc 1 193 0
   25               	/* #APP */
-  26               	 ;  155 "main.c" 1
+  26               	 ;  193 "main.c" 1
   27 0000 F894      		cli
   28               	 ;  0 "" 2
- 156:main.c        **** 
- 157:main.c        ****     //set clock to 8Mhz, no prescaler, factory calibration
- 158:main.c        ****     CCP = WRITE_PROTECT_DISABLE_SIG;
-  29               		.loc 1 158 0
+ 194:main.c        **** 
+ 195:main.c        ****     //set clock to 8Mhz, no prescaler, factory calibration
+ 196:main.c        ****     CCP = WRITE_PROTECT_DISABLE_SIG;
+  29               		.loc 1 196 0
   30               	/* #NOAPP */
   31 0002 88ED      		ldi r24,lo8(-40)
   32 0004 8CBF      		out 60-0,r24
- 159:main.c        ****     CLKPSR = 0x00;
-  33               		.loc 1 159 0
+ 197:main.c        ****     CLKPSR = 0x00;
+  33               		.loc 1 197 0
   34 0006 16BF      		out 54-0,__zero_reg__
- 160:main.c        ****     CLKMSR = 0x00;
-  35               		.loc 1 160 0
+ 198:main.c        ****     CLKMSR = 0x00;
+  35               		.loc 1 198 0
   36 0008 17BF      		out 55-0,__zero_reg__
- 161:main.c        **** 
- 162:main.c        ****     //GPIO init
- 163:main.c        ****     PORTB = B(LED_PIN) | B(UART_TX_PIN);
-  37               		.loc 1 163 0
+ 199:main.c        **** 
+ 200:main.c        ****     //GPIO init
+ 201:main.c        ****     PORTB = B(LED_PIN) | B(UART_TX_PIN);
+  37               		.loc 1 201 0
   38 000a 89E0      		ldi r24,lo8(9)
   39 000c 82B9      		out 2-0,r24
- 164:main.c        ****     DDRB  = B(LED_PIN) | B(TOUCH_PIN) | B(UART_TX_PIN);
-  40               		.loc 1 164 0
+ 202:main.c        ****     DDRB  = B(LED_PIN) | B(TOUCH_PIN) | B(UART_TX_PIN);
+  40               		.loc 1 202 0
   41 000e 8BE0      		ldi r24,lo8(11)
   42 0010 81B9      		out 1-0,r24
- 165:main.c        ****     PUEB  = B(UART_RX_PIN);
-  43               		.loc 1 165 0
+ 203:main.c        ****     PUEB  = B(UART_RX_PIN);
+  43               		.loc 1 203 0
   44 0012 84E0      		ldi r24,lo8(4)
   45 0014 83B9      		out 3-0,r24
- 166:main.c        **** 
- 167:main.c        ****     //set timer normal mode (0xFFFF top is convenient for UART)
- 168:main.c        ****     //disconnect output compare functionality
- 169:main.c        ****     //enable input capture noise filter, trigger on rising edge ( 0->1)
- 170:main.c        ****     //leave timer disabled for now (no clock source)
- 171:main.c        ****     TCCR0A = 0x00;
-  46               		.loc 1 171 0
+ 204:main.c        **** 
+ 205:main.c        ****     //set timer normal mode (0xFFFF top is convenient for UART)
+ 206:main.c        ****     //disconnect output compare functionality
+ 207:main.c        ****     //enable input capture noise filter, trigger on rising edge ( 0->1)
+ 208:main.c        ****     //leave timer disabled for now (no clock source)
+ 209:main.c        ****     TCCR0A = 0x00;
+  46               		.loc 1 209 0
   47 0016 1EBD      		out 46-0,__zero_reg__
- 172:main.c        ****     TCCR0B = B(ICNC0) | B(ICES0);
-  48               		.loc 1 172 0
+ 210:main.c        ****     TCCR0B = B(ICNC0) | B(ICES0);
+  48               		.loc 1 210 0
   49 0018 80EC      		ldi r24,lo8(-64)
   50 001a 8DBD      		out 45-0,r24
- 173:main.c        ****     //disable interrupts and clear timer for now
- 174:main.c        ****     TIMSK0 = 0x00;
-  51               		.loc 1 174 0
+ 211:main.c        ****     //disable interrupts and clear timer for now
+ 212:main.c        ****     TIMSK0 = 0x00;
+  51               		.loc 1 212 0
   52 001c 1BBD      		out 43-0,__zero_reg__
- 175:main.c        ****     TCNT0  = 0x0000;
-  53               		.loc 1 175 0
+ 213:main.c        ****     TCNT0  = 0x0000;
+  53               		.loc 1 213 0
   54 001e 19BD      		out 40+1-0,__zero_reg__
   55 0020 18BD      		out 40-0,__zero_reg__
- 176:main.c        **** 
- 177:main.c        ****     //TODO: RSTDISBL bit ...fuse
- 178:main.c        **** 
- 179:main.c        ****     //since all interrupts are disabled, cur_rx will be read as first config
- 180:main.c        ****     cur_rx = DEFAULT_CONFIGURATION;
-  56               		.loc 1 180 0
+ 214:main.c        **** 
+ 215:main.c        ****     //TODO: RSTDISBL bit ...fuse
+ 216:main.c        **** 
+ 217:main.c        ****     //since all interrupts are disabled, cur_rx will be read as first config
+ 218:main.c        ****     cur_rx = DEFAULT_CONFIGURATION;
+  56               		.loc 1 218 0
   57 0022 8AEA      		ldi r24,lo8(-86)
   58 0024 80A8      		sts cur_rx,r24
- 181:main.c        ****     //enable ovf interrupt, start the timer and let the magic begin
- 182:main.c        ****     SET(TIMSK0,TOIE0);
-  59               		.loc 1 182 0
+ 219:main.c        ****     //enable ovf interrupt, start the timer and let the magic begin
+ 220:main.c        ****     SET(TIMSK0,TOIE0);
+  59               		.loc 1 220 0
   60 0026 8BB5      		in r24,43-0
   61 0028 8160      		ori r24,lo8(1)
   62 002a 8BBD      		out 43-0,r24
- 183:main.c        ****     SET(TCCR0B,CS00);
-  63               		.loc 1 183 0
+ 221:main.c        ****     SET(TCCR0B,CS00);
+  63               		.loc 1 221 0
   64 002c 8DB5      		in r24,45-0
   65 002e 8160      		ori r24,lo8(1)
   66 0030 8DBD      		out 45-0,r24
- 184:main.c        ****     sei();
-  67               		.loc 1 184 0
+ 222:main.c        ****     sei();
+  67               		.loc 1 222 0
   68               	/* #APP */
-  69               	 ;  184 "main.c" 1
+  69               	 ;  222 "main.c" 1
   70 0032 7894      		sei
   71               	 ;  0 "" 2
   72               	/* epilogue start */
- 185:main.c        **** 
- 186:main.c        **** }
-  73               		.loc 1 186 0
+ 223:main.c        **** 
+ 224:main.c        **** }
+  73               		.loc 1 224 0
   74               	/* #NOAPP */
   75 0034 0895      		ret
   76               		.cfi_endproc
@@ -264,478 +302,667 @@
   80               	.global	main
   82               	main:
   83               	.LFB6:
-  87:main.c        **** int main(void) {
-  84               		.loc 1 87 0
+ 109:main.c        **** int main(void) {
+  84               		.loc 1 109 0
   85               		.cfi_startproc
-  86               	/* prologue: function */
-  87               	/* frame size = 0 */
-  88               	/* stack size = 0 */
-  89               	.L__stack_usage = 0
-  89:main.c        ****   init();
-  90               		.loc 1 89 0
-  91 0000 00D0      		rcall init
- 115:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
-  92               		.loc 1 115 0
-  93 0002 61E0      		ldi r22,lo8(1)
- 107:main.c        ****               OCR0AL = 0xFF;
-  94               		.loc 1 107 0
-  95 0004 7FEF      		ldi r23,lo8(-1)
-  96               	.L11:
-  94:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
-  97               		.loc 1 94 0
-  98 0006 9899      		sbic 19-0,0
-  99 0008 00C0      		rjmp .L4
-  94:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
- 100               		.loc 1 94 0 is_stmt 0 discriminator 1
- 101 000a 0BB5      		in __tmp_reg__,43-0
- 102 000c 02FD      		sbrc __tmp_reg__,2
- 103 000e 00C0      		rjmp .L4
-  98:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
- 104               		.loc 1 98 0 is_stmt 1
- 105 0010 80A0      		lds r24,cur_rx
- 106 0012 80FF      		sbrs r24,0
- 107 0014 00C0      		rjmp .L5
-  98:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
- 108               		.loc 1 98 0 is_stmt 0 discriminator 1
- 109 0016 90A0      		lds r25,state
- 110 0018 90FF      		sbrs r25,0
- 111 001a 00C0      		rjmp .L5
- 101:main.c        ****               state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
- 112               		.loc 1 101 0 is_stmt 1
- 113 001c 9971      		andi r25,lo8(25)
- 114 001e E82F      		mov r30,r24
- 115 0020 E67E      		andi r30,lo8(-26)
- 116 0022 9E2B      		or r25,r30
- 102:main.c        ****               cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
- 117               		.loc 1 102 0
- 118 0024 E92F      		mov r30,r25
- 119 0026 E870      		andi r30,lo8(8)
- 120 0028 8160      		ori r24,lo8(1)
- 121 002a E82B      		or r30,r24
- 122 002c E0A8      		sts cur_tx,r30
- 104:main.c        ****               state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
- 123               		.loc 1 104 0
- 124 002e 967F      		andi r25,lo8(-10)
- 125 0030 90A8      		sts state,r25
- 106:main.c        ****               OCR0AH = ~CONF_LED_MASK | state;
- 126               		.loc 1 106 0
- 127 0032 9F61      		ori r25,lo8(31)
- 128 0034 97BD      		out 39-0,r25
- 107:main.c        ****               OCR0AL = 0xFF;
- 129               		.loc 1 107 0
- 130 0036 76BD      		out 38-0,r23
- 131 0038 00C0      		rjmp .L6
- 132               	.L5:
- 111:main.c        ****               cur_tx = cur_rx;
- 133               		.loc 1 111 0
- 134 003a 80A8      		sts cur_tx,r24
- 135               	.L6:
- 115:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
- 136               		.loc 1 115 0
- 137 003c 64BB      		out 20-0,r22
- 116:main.c        ****           EIMSK = (1 << INT0);
- 138               		.loc 1 116 0
- 139 003e 63BB      		out 19-0,r22
- 140               	.L4:
- 121:main.c        ****       if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
- 141               		.loc 1 121 0
- 142 0040 88B5      		in r24,40-0
- 143 0042 99B5      		in r25,40+1-0
- 144 0044 ECE9      		ldi r30,hi8(-25536)
- 145 0046 8034      		cpi r24,lo8(-25536)
- 146 0048 9E07      		cpc r25,r30
- 147 004a 00F0      		brlo .L7
- 123:main.c        ****           CLR(TIMSK0,TOIE0);
- 148               		.loc 1 123 0
- 149 004c 8BB5      		in r24,43-0
- 150 004e 8E7F      		andi r24,lo8(-2)
- 151 0050 8BBD      		out 43-0,r24
- 125:main.c        ****           SET(DDRB,TOUCH_PIN);
- 152               		.loc 1 125 0
- 153 0052 099A      		sbi 1-0,1
- 129:main.c        ****           SET(TIMSK0,TOIE0);
+  86 0000 CF93      		push r28
+  87               	.LCFI0:
+  88               		.cfi_def_cfa_offset 3
+  89               		.cfi_offset 28, -2
+  90 0002 DF93      		push r29
+  91               	.LCFI1:
+  92               		.cfi_def_cfa_offset 4
+  93               		.cfi_offset 29, -3
+  94 0004 00D0      		rcall .
+  95 0006 00D0      		rcall .
+  96 0008 00D0      		rcall .
+  97               	.LCFI2:
+  98               		.cfi_def_cfa_offset 10
+  99 000a CDB7      		in r28,__SP_L__
+ 100 000c DEB7      		in r29,__SP_H__
+ 101               	.LCFI3:
+ 102               		.cfi_def_cfa_register 28
+ 103               	/* prologue: function */
+ 104               	/* frame size = 6 */
+ 105               	/* stack size = 8 */
+ 106               	.L__stack_usage = 8
+ 111:main.c        ****   init();
+ 107               		.loc 1 111 0
+ 108 000e 00D0      		rcall init
+ 137:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
+ 109               		.loc 1 137 0
+ 110 0010 21E0      		ldi r18,lo8(1)
+ 129:main.c        ****               OCR0AL = 0xFF;
+ 111               		.loc 1 129 0
+ 112 0012 EFEF      		ldi r30,lo8(-1)
+ 158:main.c        ****                       touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+ 113               		.loc 1 158 0
+ 114 0014 32E0      		ldi r19,lo8(2)
+ 115               	.L15:
+ 116:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
+ 116               		.loc 1 116 0
+ 117 0016 9899      		sbic 19-0,0
+ 118 0018 00C0      		rjmp .L4
+ 116:main.c        ****       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
+ 119               		.loc 1 116 0 is_stmt 0 discriminator 1
+ 120 001a 0BB5      		in __tmp_reg__,43-0
+ 121 001c 02FD      		sbrc __tmp_reg__,2
+ 122 001e 00C0      		rjmp .L4
+ 118:main.c        ****           asm("nop");
+ 123               		.loc 1 118 0 is_stmt 1
+ 124               	/* #APP */
+ 125               	 ;  118 "main.c" 1
+ 126 0020 0000      		nop
+ 127               	 ;  0 "" 2
+ 120:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+ 128               		.loc 1 120 0
+ 129               	/* #NOAPP */
+ 130 0022 80A0      		lds r24,cur_rx
+ 131 0024 80FF      		sbrs r24,0
+ 132 0026 00C0      		rjmp .L5
+ 120:main.c        ****           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+ 133               		.loc 1 120 0 is_stmt 0 discriminator 1
+ 134 0028 90A0      		lds r25,state
+ 135 002a 90FF      		sbrs r25,0
+ 136 002c 00C0      		rjmp .L5
+ 123:main.c        ****               state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
+ 137               		.loc 1 123 0 is_stmt 1
+ 138 002e 9971      		andi r25,lo8(25)
+ 139 0030 682F      		mov r22,r24
+ 140 0032 667E      		andi r22,lo8(-26)
+ 141 0034 962B      		or r25,r22
+ 124:main.c        ****               cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
+ 142               		.loc 1 124 0
+ 143 0036 692F      		mov r22,r25
+ 144 0038 6870      		andi r22,lo8(8)
+ 145 003a 8160      		ori r24,lo8(1)
+ 146 003c 682B      		or r22,r24
+ 147 003e 60A8      		sts cur_tx,r22
+ 126:main.c        ****               state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
+ 148               		.loc 1 126 0
+ 149 0040 967F      		andi r25,lo8(-10)
+ 150 0042 90A8      		sts state,r25
+ 128:main.c        ****               OCR0AH = ~CONF_LED_MASK | state;
+ 151               		.loc 1 128 0
+ 152 0044 9F61      		ori r25,lo8(31)
+ 153 0046 97BD      		out 39-0,r25
+ 129:main.c        ****               OCR0AL = 0xFF;
  154               		.loc 1 129 0
- 155 0054 8BB5      		in r24,43-0
- 156 0056 8160      		ori r24,lo8(1)
- 157 0058 8BBD      		out 43-0,r24
- 158               	.L7:
- 134:main.c        ****       if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
- 159               		.loc 1 134 0
- 160 005a 80A0      		lds r24,state
- 161 005c 90E0      		ldi r25,lo8(0)
- 162 005e 81FD      		sbrc r24,1
- 163 0060 00C0      		rjmp .L8
-  87:main.c        **** int main(void) {
- 164               		.loc 1 87 0 discriminator 1
- 165 0062 8C70      		andi r24,lo8(12)
- 166 0064 9070      		andi r25,hi8(12)
- 134:main.c        ****       if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
- 167               		.loc 1 134 0 discriminator 1
- 168 0066 8C30      		cpi r24,12
- 169 0068 9107      		cpc r25,__zero_reg__
- 170 006a 01F4      		brne .L9
- 171               	.L8:
- 136:main.c        ****           SET(DDRB,LED_PIN);
- 172               		.loc 1 136 0
- 173 006c 089A      		sbi 1-0,0
- 137:main.c        ****           CLR(PUEB,LED_PIN);
- 174               		.loc 1 137 0
- 175 006e 1898      		cbi 3-0,0
- 176 0070 00C0      		rjmp .L11
- 177               	.L9:
- 140:main.c        ****           CLR(DDRB,LED_PIN);
- 178               		.loc 1 140 0
- 179 0072 0898      		cbi 1-0,0
- 141:main.c        ****           SET(PUEB,LED_PIN);
- 180               		.loc 1 141 0
- 181 0074 189A      		sbi 3-0,0
- 182 0076 00C0      		rjmp .L11
- 183               		.cfi_endproc
- 184               	.LFE6:
- 186               		.text
- 187               	.global	__vector_1
- 189               	__vector_1:
- 190               	.LFB8:
- 187:main.c        **** 
- 188:main.c        **** 
- 189:main.c        **** 
- 190:main.c        **** 
- 191:main.c        **** 
- 192:main.c        **** 
- 193:main.c        **** //=====================================
- 194:main.c        **** //INTERRUPT HANDLERS
- 195:main.c        **** //=====================================
- 196:main.c        **** 
- 197:main.c        **** //external interrupt (start of UART RX)
- 198:main.c        **** ISR(INT0_vect){
- 191               		.loc 1 198 0
- 192               		.cfi_startproc
- 193 0036 1F93      		push r17
- 194               	.LCFI0:
- 195               		.cfi_def_cfa_offset 3
- 196               		.cfi_offset 17, -2
- 197 0038 0F93      		push r16
- 198               	.LCFI1:
- 199               		.cfi_def_cfa_offset 4
- 200               		.cfi_offset 16, -3
- 201 003a 0FB7      		in r16,__SREG__
- 202 003c 0F93      		push r16
- 203 003e 10E0      		ldi __zero_reg__,lo8(0)
- 204 0040 8F93      		push r24
- 205               	.LCFI2:
- 206               		.cfi_def_cfa_offset 5
- 207               		.cfi_offset 24, -4
- 208 0042 9F93      		push r25
- 209               	.LCFI3:
- 210               		.cfi_def_cfa_offset 6
- 211               		.cfi_offset 25, -5
- 212               	/* prologue: Signal */
- 213               	/* frame size = 0 */
- 214               	/* stack size = 5 */
- 215               	.L__stack_usage = 5
- 199:main.c        **** 
- 200:main.c        ****     //allow touch to interrupt
- 201:main.c        ****     sei();
- 216               		.loc 1 201 0
- 217               	/* #APP */
- 218               	 ;  201 "main.c" 1
- 219 0044 7894      		sei
- 220               	 ;  0 "" 2
- 202:main.c        **** 
- 203:main.c        ****     //set first sample time
- 204:main.c        ****     OCR0A = TCNT0+UART_HALF_OCR_INC;
- 221               		.loc 1 204 0
- 222               	/* #NOAPP */
- 223 0046 88B5      		in r24,40-0
- 224 0048 99B5      		in r25,40+1-0
- 225 004a 8D56      		subi r24,lo8(-(403))
- 226 004c 9E4F      		sbci r25,hi8(-(403))
- 227 004e 97BD      		out 38+1-0,r25
- 228 0050 86BD      		out 38-0,r24
- 205:main.c        ****     //disable external interrupt, enable COMPA interrupt
- 206:main.c        ****     EIMSK = 0x00;
- 229               		.loc 1 206 0
- 230 0052 13BB      		out 19-0,__zero_reg__
- 207:main.c        ****     SET(TIMSK0,OCIE0B);
- 231               		.loc 1 207 0
- 232 0054 8BB5      		in r24,43-0
- 233 0056 8460      		ori r24,lo8(4)
- 234 0058 8BBD      		out 43-0,r24
- 235               	/* epilogue start */
- 208:main.c        **** 
- 209:main.c        **** }
- 236               		.loc 1 209 0
- 237 005a 9F91      		pop r25
- 238 005c 8F91      		pop r24
- 239 005e 0F91      		pop r16
- 240 0060 0FBF      		out __SREG__,r16
- 241 0062 0F91      		pop r16
- 242 0064 1F91      		pop r17
- 243 0066 1895      		reti
- 244               		.cfi_endproc
- 245               	.LFE8:
- 247               	.global	__vector_6
- 249               	__vector_6:
- 250               	.LFB9:
- 210:main.c        **** 
- 211:main.c        **** //OCR0A interrupt handler
- 212:main.c        **** ISR(TIM0_COMPB_vect){
- 251               		.loc 1 212 0
- 252               		.cfi_startproc
- 253 0068 1F93      		push r17
- 254               	.LCFI4:
- 255               		.cfi_def_cfa_offset 3
- 256               		.cfi_offset 17, -2
- 257 006a 0F93      		push r16
- 258               	.LCFI5:
- 259               		.cfi_def_cfa_offset 4
- 260               		.cfi_offset 16, -3
- 261 006c 0FB7      		in r16,__SREG__
- 262 006e 0F93      		push r16
- 263 0070 10E0      		ldi __zero_reg__,lo8(0)
- 264 0072 6F93      		push r22
- 265               	.LCFI6:
- 266               		.cfi_def_cfa_offset 5
- 267               		.cfi_offset 22, -4
- 268 0074 7F93      		push r23
- 269               	.LCFI7:
- 270               		.cfi_def_cfa_offset 6
- 271               		.cfi_offset 23, -5
- 272 0076 8F93      		push r24
- 273               	.LCFI8:
- 274               		.cfi_def_cfa_offset 7
- 275               		.cfi_offset 24, -6
- 276 0078 9F93      		push r25
- 277               	.LCFI9:
- 278               		.cfi_def_cfa_offset 8
- 279               		.cfi_offset 25, -7
- 280               	/* prologue: Signal */
- 281               	/* frame size = 0 */
- 282               	/* stack size = 7 */
- 283               	.L__stack_usage = 7
- 213:main.c        **** 
- 214:main.c        ****     //allow touch to interrupt
- 215:main.c        ****     sei();
- 284               		.loc 1 215 0
- 285               	/* #APP */
- 286               	 ;  215 "main.c" 1
- 287 007a 7894      		sei
- 288               	 ;  0 "" 2
- 216:main.c        **** 
- 217:main.c        ****     //update OCR0A (always to reduce jitter)
- 218:main.c        ****     OCR0A += UART_OCR_INC;
- 289               		.loc 1 218 0
- 290               	/* #NOAPP */
- 291 007c 86B5      		in r24,38-0
- 292 007e 97B5      		in r25,38+1-0
- 293 0080 8E53      		subi r24,lo8(-(194))
- 294 0082 9F4F      		sbci r25,hi8(-(194))
- 295 0084 97BD      		out 38+1-0,r25
- 296 0086 86BD      		out 38-0,r24
- 219:main.c        **** 
- 220:main.c        ****     //update RX and TX
- 221:main.c        ****     if(tx_cnt == UART_START){
- 297               		.loc 1 221 0
- 298 0088 80A0      		lds r24,tx_cnt
- 299 008a 8823      		tst r24
- 300 008c 01F4      		brne .L14
- 222:main.c        ****         //don't store sample, set TX low
- 223:main.c        ****         CLR(PORTB,UART_TX_PIN);
- 301               		.loc 1 223 0
- 302 008e 1398      		cbi 2-0,3
- 224:main.c        ****         //icrement tx counter
- 225:main.c        ****         tx_cnt++;
- 303               		.loc 1 225 0
- 304 0090 81E0      		ldi r24,lo8(1)
- 305 0092 80A8      		sts tx_cnt,r24
- 306 0094 00C0      		rjmp .L13
- 307               	.L14:
- 226:main.c        ****     } else if (tx_cnt < UART_STOP) {
- 308               		.loc 1 226 0
- 309 0096 8930      		cpi r24,lo8(9)
- 310 0098 00F4      		brsh .L16
- 227:main.c        ****         //store RX samle
- 228:main.c        ****         cur_rx |= ((PINB >> 2) & 0x01);
- 311               		.loc 1 228 0
- 312 009a 80B1      		in r24,0-0
- 313 009c 8695      		lsr r24
- 314 009e 8695      		lsr r24
- 315 00a0 8170      		andi r24,lo8(1)
- 316 00a2 90A0      		lds r25,cur_rx
- 317 00a4 892B      		or r24,r25
- 229:main.c        ****         cur_rx = (cur_rx << 1);
- 318               		.loc 1 229 0
- 319 00a6 880F      		lsl r24
- 320 00a8 80A8      		sts cur_rx,r24
- 230:main.c        ****         //set TX output
- 231:main.c        ****         PORTB  = (PORTB & ~(1 << UART_TX_PIN)) | ((cur_tx & 0x01) << UART_TX_PIN);
- 321               		.loc 1 231 0
- 322 00aa 62B1      		in r22,2-0
- 323 00ac 70A0      		lds r23,cur_tx
- 324 00ae 872F      		mov r24,r23
- 325 00b0 90E0      		ldi r25,lo8(0)
- 326 00b2 8170      		andi r24,lo8(1)
- 327 00b4 9070      		andi r25,hi8(1)
- 328 00b6 880F      		lsl r24
- 329 00b8 991F      		rol r25
- 330 00ba 880F      		lsl r24
- 331 00bc 991F      		rol r25
- 332 00be 880F      		lsl r24
- 333 00c0 991F      		rol r25
- 334 00c2 677F      		andi r22,lo8(-9)
- 335 00c4 682B      		or r22,r24
- 336 00c6 62B9      		out 2-0,r22
- 232:main.c        ****         cur_tx = (cur_tx >> 1);
- 337               		.loc 1 232 0
- 338 00c8 7695      		lsr r23
- 339 00ca 70A8      		sts cur_tx,r23
- 340 00cc 00C0      		rjmp .L13
- 341               	.L16:
- 233:main.c        ****         //increment tx counter
- 234:main.c        ****     } else {
- 235:main.c        ****         //don't sample, set TX high
- 236:main.c        ****         SET(PORTB,UART_TX_PIN);
- 342               		.loc 1 236 0
- 343 00ce 139A      		sbi 2-0,3
- 237:main.c        ****         //enable external interrupt, enable COMPA interrupt
- 238:main.c        ****         //EIMSK = 0x01; TODO:think about sync with main
- 239:main.c        ****         CLR(TIMSK0,OCIE0B);
- 344               		.loc 1 239 0
- 345 00d0 8BB5      		in r24,43-0
- 346 00d2 8B7F      		andi r24,lo8(-5)
- 347 00d4 8BBD      		out 43-0,r24
- 240:main.c        ****         //we are done, set tx_counter to 0
- 241:main.c        ****         tx_cnt = 0x00;
- 348               		.loc 1 241 0
- 349 00d6 10A8      		sts tx_cnt,__zero_reg__
- 350               	.L13:
- 351               	/* epilogue start */
- 242:main.c        ****     }
- 243:main.c        **** 
- 244:main.c        **** }
- 352               		.loc 1 244 0
- 353 00d8 9F91      		pop r25
- 354 00da 8F91      		pop r24
- 355 00dc 7F91      		pop r23
- 356 00de 6F91      		pop r22
- 357 00e0 0F91      		pop r16
- 358 00e2 0FBF      		out __SREG__,r16
- 359 00e4 0F91      		pop r16
- 360 00e6 1F91      		pop r17
- 361 00e8 1895      		reti
- 362               		.cfi_endproc
- 363               	.LFE9:
- 365               	.global	__vector_4
- 367               	__vector_4:
- 368               	.LFB10:
- 245:main.c        **** 
+ 155 0048 E6BD      		out 38-0,r30
+ 156 004a 00C0      		rjmp .L6
+ 157               	.L5:
+ 133:main.c        ****               cur_tx = cur_rx;
+ 158               		.loc 1 133 0
+ 159 004c 80A8      		sts cur_tx,r24
+ 160               	.L6:
+ 137:main.c        ****           EIFR  = (1<<INTF0); //clear external interrupt state
+ 161               		.loc 1 137 0
+ 162 004e 24BB      		out 20-0,r18
+ 138:main.c        ****           EIMSK = (1 << INT0);
+ 163               		.loc 1 138 0
+ 164 0050 23BB      		out 19-0,r18
+ 139:main.c        ****           asm("nop");
+ 165               		.loc 1 139 0
+ 166               	/* #APP */
+ 167               	 ;  139 "main.c" 1
+ 168 0052 0000      		nop
+ 169               	 ;  0 "" 2
+ 170               	/* #NOAPP */
+ 171 0054 00C0      		rjmp .L15
+ 172               	.L4:
+ 148:main.c        ****           if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
+ 173               		.loc 1 148 0
+ 174 0056 88B5      		in r24,40-0
+ 175 0058 99B5      		in r25,40+1-0
+ 176 005a 4CE9      		ldi r20,hi8(-25536)
+ 177 005c 8034      		cpi r24,lo8(-25536)
+ 178 005e 9407      		cpc r25,r20
+ 179 0060 00F4      		brsh .+2
+ 180 0062 00C0      		rjmp .L8
+ 151:main.c        ****               touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+ 181               		.loc 1 151 0
+ 182 0064 0AB5      		in __tmp_reg__,42-0
+ 183 0066 05FF      		sbrs __tmp_reg__,5
+ 184 0068 00C0      		rjmp .L14
+ 151:main.c        ****               touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+ 185               		.loc 1 151 0 is_stmt 0 discriminator 1
+ 186 006a 62B5      		in r22,34-0
+ 187 006c 73B5      		in r23,34+1-0
+ 188 006e C95F      		subi r28,lo8(-(5+2))
+ 189 0070 DF4F      		sbci r29,hi8(-(5+2))
+ 190 0072 7A93      		st -Y,r23
+ 191 0074 6A93      		st -Y,r22
+ 192 0076 C550      		subi r28,lo8(5)
+ 193 0078 D040      		sbci r29,hi8(5)
+ 194 007a 00C0      		rjmp .L9
+ 195               	.L14:
+ 151:main.c        ****               touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+ 196               		.loc 1 151 0
+ 197 007c 80E4      		ldi r24,lo8(-25536)
+ 198 007e 9CE9      		ldi r25,hi8(-25536)
+ 199 0080 C95F      		subi r28,lo8(-(5+2))
+ 200 0082 DF4F      		sbci r29,hi8(-(5+2))
+ 201 0084 9A93      		st -Y,r25
+ 202 0086 8A93      		st -Y,r24
+ 203 0088 C550      		subi r28,lo8(5)
+ 204 008a D040      		sbci r29,hi8(5)
+ 205               	.L9:
+ 151:main.c        ****               touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+ 206               		.loc 1 151 0 discriminator 3
+ 207 008c CB5F      		subi r28,lo8(-(5))
+ 208 008e DF4F      		sbci r29,hi8(-(5))
+ 209 0090 A991      		ld r26,Y+
+ 210 0092 B881      		ld r27,Y
+ 211 0094 C650      		subi r28,lo8(5+1)
+ 212 0096 D040      		sbci r29,hi8(5+1)
+ 213 0098 B0A8      		sts touch_new+1,r27
+ 214 009a A0A8      		sts touch_new,r26
+ 153:main.c        ****               touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
+ 215               		.loc 1 153 0 is_stmt 1 discriminator 3
+ 216 009c 4A2F      		mov r20,r26
+ 217 009e 5B2F      		mov r21,r27
+ 218 00a0 60E0      		ldi r22,lo8(0)
+ 219 00a2 70E0      		ldi r23,hi8(0)
+ 220 00a4 CF5F      		subi r28,lo8(-(1))
+ 221 00a6 DF4F      		sbci r29,hi8(-(1))
+ 222 00a8 4993      		st Y+,r20
+ 223 00aa 5993      		st Y+,r21
+ 224 00ac 6993      		st Y+,r22
+ 225 00ae 7883      		st Y,r23
+ 226 00b0 C450      		subi r28,lo8(1+3)
+ 227 00b2 D040      		sbci r29,hi8(1+3)
+ 228 00b4 40A0      		lds r20,touch_avg
+ 229 00b6 50A0      		lds r21,touch_avg+1
+ 230 00b8 60E0      		ldi r22,lo8(0)
+ 231 00ba 70E0      		ldi r23,hi8(0)
+ 232 00bc B72F      		mov r27,r23
+ 233 00be A62F      		mov r26,r22
+ 234 00c0 952F      		mov r25,r21
+ 235 00c2 842F      		mov r24,r20
+ 236 00c4 F5E0      		ldi r31,5
+ 237 00c6 880F      	1:	lsl r24
+ 238 00c8 991F      		rol r25
+ 239 00ca AA1F      		rol r26
+ 240 00cc BB1F      		rol r27
+ 241 00ce FA95      		dec r31
+ 242 00d0 01F4      		brne 1b
+ 243 00d2 841B      		sub r24,r20
+ 244 00d4 950B      		sbc r25,r21
+ 245 00d6 A60B      		sbc r26,r22
+ 246 00d8 B70B      		sbc r27,r23
+ 247 00da CF5F      		subi r28,lo8(-(1))
+ 248 00dc DF4F      		sbci r29,hi8(-(1))
+ 249 00de 4991      		ld r20,Y+
+ 250 00e0 5991      		ld r21,Y+
+ 251 00e2 6991      		ld r22,Y+
+ 252 00e4 7881      		ld r23,Y
+ 253 00e6 C450      		subi r28,lo8(1+3)
+ 254 00e8 D040      		sbci r29,hi8(1+3)
+ 255 00ea 480F      		add r20,r24
+ 256 00ec 591F      		adc r21,r25
+ 257 00ee 6A1F      		adc r22,r26
+ 258 00f0 7B1F      		adc r23,r27
+ 259 00f2 F5E0      		ldi r31,5
+ 260 00f4 440F      	1:	lsl r20
+ 261 00f6 551F      		rol r21
+ 262 00f8 661F      		rol r22
+ 263 00fa 771F      		rol r23
+ 264 00fc FA95      		dec r31
+ 265 00fe 01F4      		brne 1b
+ 266 0100 FAE0      		ldi r31,10
+ 267 0102 7695      	1:	lsr r23
+ 268 0104 6795      		ror r22
+ 269 0106 5795      		ror r21
+ 270 0108 4795      		ror r20
+ 271 010a FA95      		dec r31
+ 272 010c 01F4      		brne 1b
+ 273 010e CF5F      		subi r28,lo8(-(1))
+ 274 0110 DF4F      		sbci r29,hi8(-(1))
+ 275 0112 4993      		st Y+,r20
+ 276 0114 5993      		st Y+,r21
+ 277 0116 6993      		st Y+,r22
+ 278 0118 7883      		st Y,r23
+ 279 011a C450      		subi r28,lo8(1+3)
+ 280 011c D040      		sbci r29,hi8(1+3)
+ 281 011e 50A8      		sts touch_avg+1,r21
+ 282 0120 40A8      		sts touch_avg,r20
+ 155:main.c        ****               if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
+ 283               		.loc 1 155 0 discriminator 3
+ 284 0122 CF5F      		subi r28,lo8(-(1))
+ 285 0124 DF4F      		sbci r29,hi8(-(1))
+ 286 0126 8991      		ld r24,Y+
+ 287 0128 9881      		ld r25,Y
+ 288 012a C250      		subi r28,lo8(1+1)
+ 289 012c D040      		sbci r29,hi8(1+1)
+ 290 012e 8050      		subi r24,lo8(-(512))
+ 291 0130 9E4F      		sbci r25,hi8(-(512))
+ 292 0132 CB5F      		subi r28,lo8(-(5))
+ 293 0134 DF4F      		sbci r29,hi8(-(5))
+ 294 0136 6991      		ld r22,Y+
+ 295 0138 7881      		ld r23,Y
+ 296 013a C650      		subi r28,lo8(5+1)
+ 297 013c D040      		sbci r29,hi8(5+1)
+ 298 013e 8617      		cp r24,r22
+ 299 0140 9707      		cpc r25,r23
+ 300 0142 00F4      		brsh .L10
+ 156:main.c        ****                   touch_cnt++;
+ 301               		.loc 1 156 0
+ 302 0144 80A0      		lds r24,touch_cnt
+ 303 0146 8F5F      		subi r24,lo8(-(1))
+ 304 0148 80A8      		sts touch_cnt,r24
+ 157:main.c        ****                   if(touch_cnt >= TOUCH_VALID_CNT){
+ 305               		.loc 1 157 0
+ 306 014a 8230      		cpi r24,lo8(2)
+ 307 014c 00F0      		brlo .L11
+ 158:main.c        ****                       touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+ 308               		.loc 1 158 0
+ 309 014e 30A8      		sts touch_cnt,r19
+ 159:main.c        ****                       SET(state,TOUCHED);
+ 310               		.loc 1 159 0
+ 311 0150 80A0      		lds r24,state
+ 312 0152 8860      		ori r24,lo8(8)
+ 313 0154 80A8      		sts state,r24
+ 314 0156 00C0      		rjmp .L11
+ 315               	.L10:
+ 162:main.c        ****                   touch_cnt = 0;
+ 316               		.loc 1 162 0
+ 317 0158 10A8      		sts touch_cnt,__zero_reg__
+ 318               	.L11:
+ 166:main.c        ****               SET(TIFR0,ICF0);
+ 319               		.loc 1 166 0
+ 320 015a 8AB5      		in r24,42-0
+ 321 015c 8062      		ori r24,lo8(32)
+ 322 015e 8ABD      		out 42-0,r24
+ 167:main.c        ****               CLR(PORTB,TOUCH_PIN);
+ 323               		.loc 1 167 0
+ 324 0160 1198      		cbi 2-0,1
+ 168:main.c        ****               SET(DDRB,TOUCH_PIN);
+ 325               		.loc 1 168 0
+ 326 0162 099A      		sbi 1-0,1
+ 327               	.L8:
+ 172:main.c        ****           if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+ 328               		.loc 1 172 0
+ 329 0164 80A0      		lds r24,state
+ 330 0166 90E0      		ldi r25,lo8(0)
+ 331 0168 81FD      		sbrc r24,1
+ 332 016a 00C0      		rjmp .L12
+ 109:main.c        **** int main(void) {
+ 333               		.loc 1 109 0 discriminator 1
+ 334 016c 8C70      		andi r24,lo8(12)
+ 335 016e 9070      		andi r25,hi8(12)
+ 172:main.c        ****           if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+ 336               		.loc 1 172 0 discriminator 1
+ 337 0170 8C30      		cpi r24,12
+ 338 0172 9107      		cpc r25,__zero_reg__
+ 339 0174 01F4      		brne .L13
+ 340               	.L12:
+ 174:main.c        ****               SET(DDRB,LED_PIN);
+ 341               		.loc 1 174 0
+ 342 0176 089A      		sbi 1-0,0
+ 175:main.c        ****               CLR(PUEB,LED_PIN);
+ 343               		.loc 1 175 0
+ 344 0178 1898      		cbi 3-0,0
+ 345 017a 00C0      		rjmp .L15
+ 346               	.L13:
+ 178:main.c        ****               CLR(DDRB,LED_PIN);
+ 347               		.loc 1 178 0
+ 348 017c 0898      		cbi 1-0,0
+ 179:main.c        ****               SET(PUEB,LED_PIN);
+ 349               		.loc 1 179 0
+ 350 017e 189A      		sbi 3-0,0
+ 351 0180 00C0      		rjmp .L15
+ 352               		.cfi_endproc
+ 353               	.LFE6:
+ 355               		.text
+ 356               	.global	__vector_1
+ 358               	__vector_1:
+ 359               	.LFB8:
+ 225:main.c        **** 
+ 226:main.c        **** 
+ 227:main.c        **** 
+ 228:main.c        **** 
+ 229:main.c        **** 
+ 230:main.c        **** 
+ 231:main.c        **** //=====================================
+ 232:main.c        **** //INTERRUPT HANDLERS
+ 233:main.c        **** //=====================================
+ 234:main.c        **** 
+ 235:main.c        **** //external interrupt (start of UART RX)
+ 236:main.c        **** ISR(INT0_vect){
+ 360               		.loc 1 236 0
+ 361               		.cfi_startproc
+ 362 0036 1F93      		push r17
+ 363               	.LCFI4:
+ 364               		.cfi_def_cfa_offset 3
+ 365               		.cfi_offset 17, -2
+ 366 0038 0F93      		push r16
+ 367               	.LCFI5:
+ 368               		.cfi_def_cfa_offset 4
+ 369               		.cfi_offset 16, -3
+ 370 003a 0FB7      		in r16,__SREG__
+ 371 003c 0F93      		push r16
+ 372 003e 10E0      		ldi __zero_reg__,lo8(0)
+ 373 0040 8F93      		push r24
+ 374               	.LCFI6:
+ 375               		.cfi_def_cfa_offset 5
+ 376               		.cfi_offset 24, -4
+ 377 0042 9F93      		push r25
+ 378               	.LCFI7:
+ 379               		.cfi_def_cfa_offset 6
+ 380               		.cfi_offset 25, -5
+ 381               	/* prologue: Signal */
+ 382               	/* frame size = 0 */
+ 383               	/* stack size = 5 */
+ 384               	.L__stack_usage = 5
+ 237:main.c        **** 
+ 238:main.c        ****     //allow touch to interrupt
+ 239:main.c        ****     sei();
+ 385               		.loc 1 239 0
+ 386               	/* #APP */
+ 387               	 ;  239 "main.c" 1
+ 388 0044 7894      		sei
+ 389               	 ;  0 "" 2
+ 240:main.c        **** 
+ 241:main.c        ****     //set first sample time
+ 242:main.c        ****     OCR0A = TCNT0+UART_HALF_OCR_INC;
+ 390               		.loc 1 242 0
+ 391               	/* #NOAPP */
+ 392 0046 88B5      		in r24,40-0
+ 393 0048 99B5      		in r25,40+1-0
+ 394 004a 8D56      		subi r24,lo8(-(403))
+ 395 004c 9E4F      		sbci r25,hi8(-(403))
+ 396 004e 97BD      		out 38+1-0,r25
+ 397 0050 86BD      		out 38-0,r24
+ 243:main.c        ****     //disable external interrupt, enable COMPA interrupt
+ 244:main.c        ****     EIMSK = 0x00;
+ 398               		.loc 1 244 0
+ 399 0052 13BB      		out 19-0,__zero_reg__
+ 245:main.c        ****     SET(TIMSK0,OCIE0B);
+ 400               		.loc 1 245 0
+ 401 0054 8BB5      		in r24,43-0
+ 402 0056 8460      		ori r24,lo8(4)
+ 403 0058 8BBD      		out 43-0,r24
+ 404               	/* epilogue start */
  246:main.c        **** 
- 247:main.c        **** 
- 248:main.c        **** #if LED_PIN != PIN0
- 249:main.c        **** #  error "change interrupt routines when changing LED_PIN definition"
- 250:main.c        **** #endif
- 251:main.c        **** #if TOUCH_PIN != PIN1
- 252:main.c        **** #  error "change interrupt routines when changing TOUCH_PIN definition"
- 253:main.c        **** #endif
+ 247:main.c        **** }
+ 405               		.loc 1 247 0
+ 406 005a 9F91      		pop r25
+ 407 005c 8F91      		pop r24
+ 408 005e 0F91      		pop r16
+ 409 0060 0FBF      		out __SREG__,r16
+ 410 0062 0F91      		pop r16
+ 411 0064 1F91      		pop r17
+ 412 0066 1895      		reti
+ 413               		.cfi_endproc
+ 414               	.LFE8:
+ 416               	.global	__vector_6
+ 418               	__vector_6:
+ 419               	.LFB9:
+ 248:main.c        **** 
+ 249:main.c        **** //OCR0A interrupt handler
+ 250:main.c        **** ISR(TIM0_COMPB_vect){
+ 420               		.loc 1 250 0
+ 421               		.cfi_startproc
+ 422 0068 1F93      		push r17
+ 423               	.LCFI8:
+ 424               		.cfi_def_cfa_offset 3
+ 425               		.cfi_offset 17, -2
+ 426 006a 0F93      		push r16
+ 427               	.LCFI9:
+ 428               		.cfi_def_cfa_offset 4
+ 429               		.cfi_offset 16, -3
+ 430 006c 0FB7      		in r16,__SREG__
+ 431 006e 0F93      		push r16
+ 432 0070 10E0      		ldi __zero_reg__,lo8(0)
+ 433 0072 6F93      		push r22
+ 434               	.LCFI10:
+ 435               		.cfi_def_cfa_offset 5
+ 436               		.cfi_offset 22, -4
+ 437 0074 7F93      		push r23
+ 438               	.LCFI11:
+ 439               		.cfi_def_cfa_offset 6
+ 440               		.cfi_offset 23, -5
+ 441 0076 8F93      		push r24
+ 442               	.LCFI12:
+ 443               		.cfi_def_cfa_offset 7
+ 444               		.cfi_offset 24, -6
+ 445 0078 9F93      		push r25
+ 446               	.LCFI13:
+ 447               		.cfi_def_cfa_offset 8
+ 448               		.cfi_offset 25, -7
+ 449               	/* prologue: Signal */
+ 450               	/* frame size = 0 */
+ 451               	/* stack size = 7 */
+ 452               	.L__stack_usage = 7
+ 251:main.c        **** 
+ 252:main.c        ****     //allow touch to interrupt
+ 253:main.c        ****     sei();
+ 453               		.loc 1 253 0
+ 454               	/* #APP */
+ 455               	 ;  253 "main.c" 1
+ 456 007a 7894      		sei
+ 457               	 ;  0 "" 2
  254:main.c        **** 
- 255:main.c        **** //TIM0 overflow handler,
- 256:main.c        **** //Start touch measurement by setting pin to input
- 257:main.c        **** //also clear led pin, for PWM (pwm mode does not allow 0xFFFF as top....)
- 258:main.c        **** ISR(TIM0_OVF_vect, ISR_NAKED){
- 369               		.loc 1 258 0
- 370               		.cfi_startproc
- 371               	/* prologue: naked */
- 372               	/* frame size = 0 */
- 373               	/* stack size = 0 */
- 374               	.L__stack_usage = 0
- 259:main.c        ****     //set cap_touch pin to input pin to input
- 260:main.c        ****     //PORTB &= ~(1 << LED_PIN);
- 261:main.c        ****     //DDRB &= ~(1 << TOUCH_PIN);
- 262:main.c        ****     asm("sbi 2,0");
- 375               		.loc 1 262 0
- 376               	/* #APP */
- 377               	 ;  262 "main.c" 1
- 378 00ea 109A      		sbi 2,0
- 379               	 ;  0 "" 2
- 263:main.c        ****     asm("cbi 1,1");
- 380               		.loc 1 263 0
- 381               	 ;  263 "main.c" 1
- 382 00ec 0998      		cbi 1,1
- 383               	 ;  0 "" 2
- 264:main.c        ****     asm("reti");
- 384               		.loc 1 264 0
- 385               	 ;  264 "main.c" 1
- 386 00ee 1895      		reti
- 387               	 ;  0 "" 2
- 388               	/* epilogue start */
- 265:main.c        **** }
- 389               		.loc 1 265 0
- 390               	/* #NOAPP */
- 391               		.cfi_endproc
- 392               	.LFE10:
- 394               	.global	__vector_5
- 396               	__vector_5:
- 397               	.LFB11:
- 266:main.c        **** 
- 267:main.c        **** 
- 268:main.c        **** //kind of stupid, but needed since non-pwm mode makes PWM generation hard
- 269:main.c        **** //cannot set to PWM mode because the TOP values are either changing
- 270:main.c        **** //OC0A, OC0B and ICR, or TOP value is too low (0x03FF max).
- 271:main.c        **** ISR(TIM0_COMPA_vect, ISR_NAKED){
- 398               		.loc 1 271 0
- 399               		.cfi_startproc
- 400               	/* prologue: naked */
- 401               	/* frame size = 0 */
- 402               	/* stack size = 0 */
- 403               	.L__stack_usage = 0
- 272:main.c        ****     //set cap_touch pin to input pin to input
- 273:main.c        ****     //PORTB &= ~(1 << LED_PIN);
- 274:main.c        ****     //DDRB &= ~(1 << TOUCH_PIN);
- 275:main.c        ****     asm("cbi 2,0");
- 404               		.loc 1 275 0
- 405               	/* #APP */
- 406               	 ;  275 "main.c" 1
- 407 00f0 1098      		cbi 2,0
- 408               	 ;  0 "" 2
- 276:main.c        ****     asm("reti");
- 409               		.loc 1 276 0
- 410               	 ;  276 "main.c" 1
- 411 00f2 1895      		reti
- 412               	 ;  0 "" 2
- 413               	/* epilogue start */
- 277:main.c        **** }
- 414               		.loc 1 277 0
- 415               	/* #NOAPP */
- 416               		.cfi_endproc
- 417               	.LFE11:
- 419               		.comm led_val,1,1
- 420               		.comm state,1,1
- 421               		.comm tx_cnt,1,1
- 422               		.comm cur_tx,1,1
- 423               		.comm cur_rx,1,1
- 424               		.comm cur_touch,1,1
- 425               		.comm cur_conf,1,1
- 426               		.comm cur_meas,2,1
- 427               	.Letext0:
- 428               		.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
+ 255:main.c        ****     //update OCR0A (always to reduce jitter)
+ 256:main.c        ****     OCR0A += UART_OCR_INC;
+ 458               		.loc 1 256 0
+ 459               	/* #NOAPP */
+ 460 007c 86B5      		in r24,38-0
+ 461 007e 97B5      		in r25,38+1-0
+ 462 0080 8E53      		subi r24,lo8(-(194))
+ 463 0082 9F4F      		sbci r25,hi8(-(194))
+ 464 0084 97BD      		out 38+1-0,r25
+ 465 0086 86BD      		out 38-0,r24
+ 257:main.c        **** 
+ 258:main.c        ****     //update RX and TX
+ 259:main.c        ****     if(tx_cnt == UART_START){
+ 466               		.loc 1 259 0
+ 467 0088 80A0      		lds r24,tx_cnt
+ 468 008a 8823      		tst r24
+ 469 008c 01F4      		brne .L18
+ 260:main.c        ****         //don't store sample, set TX low
+ 261:main.c        ****         CLR(PORTB,UART_TX_PIN);
+ 470               		.loc 1 261 0
+ 471 008e 1398      		cbi 2-0,3
+ 262:main.c        ****         //icrement tx counter
+ 263:main.c        ****         tx_cnt++;
+ 472               		.loc 1 263 0
+ 473 0090 81E0      		ldi r24,lo8(1)
+ 474 0092 80A8      		sts tx_cnt,r24
+ 475 0094 00C0      		rjmp .L17
+ 476               	.L18:
+ 264:main.c        ****     } else if (tx_cnt < UART_STOP) {
+ 477               		.loc 1 264 0
+ 478 0096 8930      		cpi r24,lo8(9)
+ 479 0098 00F4      		brsh .L20
+ 265:main.c        ****         //store RX samle
+ 266:main.c        ****         cur_rx |= ((PINB >> 2) & 0x01);
+ 480               		.loc 1 266 0
+ 481 009a 80B1      		in r24,0-0
+ 482 009c 8695      		lsr r24
+ 483 009e 8695      		lsr r24
+ 484 00a0 8170      		andi r24,lo8(1)
+ 485 00a2 90A0      		lds r25,cur_rx
+ 486 00a4 892B      		or r24,r25
+ 267:main.c        ****         cur_rx = (cur_rx << 1);
+ 487               		.loc 1 267 0
+ 488 00a6 880F      		lsl r24
+ 489 00a8 80A8      		sts cur_rx,r24
+ 268:main.c        ****         //set TX output
+ 269:main.c        ****         PORTB  = (PORTB & ~(1 << UART_TX_PIN)) | ((cur_tx & 0x01) << UART_TX_PIN);
+ 490               		.loc 1 269 0
+ 491 00aa 62B1      		in r22,2-0
+ 492 00ac 70A0      		lds r23,cur_tx
+ 493 00ae 872F      		mov r24,r23
+ 494 00b0 90E0      		ldi r25,lo8(0)
+ 495 00b2 8170      		andi r24,lo8(1)
+ 496 00b4 9070      		andi r25,hi8(1)
+ 497 00b6 880F      		lsl r24
+ 498 00b8 991F      		rol r25
+ 499 00ba 880F      		lsl r24
+ 500 00bc 991F      		rol r25
+ 501 00be 880F      		lsl r24
+ 502 00c0 991F      		rol r25
+ 503 00c2 677F      		andi r22,lo8(-9)
+ 504 00c4 682B      		or r22,r24
+ 505 00c6 62B9      		out 2-0,r22
+ 270:main.c        ****         cur_tx = (cur_tx >> 1);
+ 506               		.loc 1 270 0
+ 507 00c8 7695      		lsr r23
+ 508 00ca 70A8      		sts cur_tx,r23
+ 509 00cc 00C0      		rjmp .L17
+ 510               	.L20:
+ 271:main.c        ****         //increment tx counter
+ 272:main.c        ****     } else {
+ 273:main.c        ****         //don't sample, set TX high
+ 274:main.c        ****         SET(PORTB,UART_TX_PIN);
+ 511               		.loc 1 274 0
+ 512 00ce 139A      		sbi 2-0,3
+ 275:main.c        ****         //enable external interrupt, enable COMPA interrupt
+ 276:main.c        ****         //EIMSK = 0x01; TODO:think about sync with main
+ 277:main.c        ****         CLR(TIMSK0,OCIE0B);
+ 513               		.loc 1 277 0
+ 514 00d0 8BB5      		in r24,43-0
+ 515 00d2 8B7F      		andi r24,lo8(-5)
+ 516 00d4 8BBD      		out 43-0,r24
+ 278:main.c        ****         //we are done, set tx_counter to 0
+ 279:main.c        ****         tx_cnt = 0x00;
+ 517               		.loc 1 279 0
+ 518 00d6 10A8      		sts tx_cnt,__zero_reg__
+ 519               	.L17:
+ 520               	/* epilogue start */
+ 280:main.c        ****     }
+ 281:main.c        **** 
+ 282:main.c        **** }
+ 521               		.loc 1 282 0
+ 522 00d8 9F91      		pop r25
+ 523 00da 8F91      		pop r24
+ 524 00dc 7F91      		pop r23
+ 525 00de 6F91      		pop r22
+ 526 00e0 0F91      		pop r16
+ 527 00e2 0FBF      		out __SREG__,r16
+ 528 00e4 0F91      		pop r16
+ 529 00e6 1F91      		pop r17
+ 530 00e8 1895      		reti
+ 531               		.cfi_endproc
+ 532               	.LFE9:
+ 534               	.global	__vector_4
+ 536               	__vector_4:
+ 537               	.LFB10:
+ 283:main.c        **** 
+ 284:main.c        **** 
+ 285:main.c        **** 
+ 286:main.c        **** #if LED_PIN != PIN0
+ 287:main.c        **** #  error "change interrupt routines when changing LED_PIN definition"
+ 288:main.c        **** #endif
+ 289:main.c        **** #if TOUCH_PIN != PIN1
+ 290:main.c        **** #  error "change interrupt routines when changing TOUCH_PIN definition"
+ 291:main.c        **** #endif
+ 292:main.c        **** 
+ 293:main.c        **** //TIM0 overflow handler,
+ 294:main.c        **** //Start touch measurement by setting pin to input
+ 295:main.c        **** //also clear led pin, for PWM (pwm mode does not allow 0xFFFF as top....)
+ 296:main.c        **** ISR(TIM0_OVF_vect, ISR_NAKED){
+ 538               		.loc 1 296 0
+ 539               		.cfi_startproc
+ 540               	/* prologue: naked */
+ 541               	/* frame size = 0 */
+ 542               	/* stack size = 0 */
+ 543               	.L__stack_usage = 0
+ 297:main.c        ****     //set cap_touch pin to input pin to input
+ 298:main.c        ****     //PORTB &= ~(1 << LED_PIN);
+ 299:main.c        ****     //DDRB &= ~(1 << TOUCH_PIN);
+ 300:main.c        ****     asm("cbi 2,0");
+ 544               		.loc 1 300 0
+ 545               	/* #APP */
+ 546               	 ;  300 "main.c" 1
+ 547 00ea 1098      		cbi 2,0
+ 548               	 ;  0 "" 2
+ 301:main.c        ****     asm("cbi 1,1");
+ 549               		.loc 1 301 0
+ 550               	 ;  301 "main.c" 1
+ 551 00ec 0998      		cbi 1,1
+ 552               	 ;  0 "" 2
+ 302:main.c        ****     asm("reti");
+ 553               		.loc 1 302 0
+ 554               	 ;  302 "main.c" 1
+ 555 00ee 1895      		reti
+ 556               	 ;  0 "" 2
+ 557               	/* epilogue start */
+ 303:main.c        **** }
+ 558               		.loc 1 303 0
+ 559               	/* #NOAPP */
+ 560               		.cfi_endproc
+ 561               	.LFE10:
+ 563               	.global	__vector_5
+ 565               	__vector_5:
+ 566               	.LFB11:
+ 304:main.c        **** 
+ 305:main.c        **** 
+ 306:main.c        **** //kind of stupid, but needed since non-pwm mode makes PWM generation hard
+ 307:main.c        **** //cannot set to PWM mode because the TOP values are either changing
+ 308:main.c        **** //OC0A, OC0B and ICR, or TOP value is too low (0x03FF max).
+ 309:main.c        **** ISR(TIM0_COMPA_vect, ISR_NAKED){
+ 567               		.loc 1 309 0
+ 568               		.cfi_startproc
+ 569               	/* prologue: naked */
+ 570               	/* frame size = 0 */
+ 571               	/* stack size = 0 */
+ 572               	.L__stack_usage = 0
+ 310:main.c        ****     //set cap_touch pin to input pin to input
+ 311:main.c        ****     //PORTB &= ~(1 << LED_PIN);
+ 312:main.c        ****     //DDRB &= ~(1 << TOUCH_PIN);
+ 313:main.c        ****     asm("sbi 2,0");
+ 573               		.loc 1 313 0
+ 574               	/* #APP */
+ 575               	 ;  313 "main.c" 1
+ 576 00f0 109A      		sbi 2,0
+ 577               	 ;  0 "" 2
+ 314:main.c        ****     asm("reti");
+ 578               		.loc 1 314 0
+ 579               	 ;  314 "main.c" 1
+ 580 00f2 1895      		reti
+ 581               	 ;  0 "" 2
+ 582               	/* epilogue start */
+ 315:main.c        **** }
+ 583               		.loc 1 315 0
+ 584               	/* #NOAPP */
+ 585               		.cfi_endproc
+ 586               	.LFE11:
+ 588               		.comm touch_avg,2,1
+ 589               		.comm touch_new,2,1
+ 590               		.comm touch_cnt,1,1
+ 591               		.comm led_val,1,1
+ 592               		.comm state,1,1
+ 593               		.comm tx_cnt,1,1
+ 594               		.comm cur_tx,1,1
+ 595               		.comm cur_rx,1,1
+ 596               		.comm cur_touch,1,1
+ 597               		.comm cur_conf,1,1
+ 598               		.comm cur_meas,2,1
+ 599               	.Letext0:
+ 600               		.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
 DEFINED SYMBOLS
                             *ABS*:0000000000000000 main.c
-     /tmp/ccrRFTEP.s:2      *ABS*:000000000000003f __SREG__
-     /tmp/ccrRFTEP.s:3      *ABS*:000000000000003e __SP_H__
-     /tmp/ccrRFTEP.s:4      *ABS*:000000000000003d __SP_L__
-     /tmp/ccrRFTEP.s:5      *ABS*:000000000000003c __CCP__
-     /tmp/ccrRFTEP.s:6      *ABS*:0000000000000010 __tmp_reg__
-     /tmp/ccrRFTEP.s:7      *ABS*:0000000000000011 __zero_reg__
-     /tmp/ccrRFTEP.s:15     .text:0000000000000000 init
+     /tmp/ccaSfqOo.s:2      *ABS*:000000000000003f __SREG__
+     /tmp/ccaSfqOo.s:3      *ABS*:000000000000003e __SP_H__
+     /tmp/ccaSfqOo.s:4      *ABS*:000000000000003d __SP_L__
+     /tmp/ccaSfqOo.s:5      *ABS*:000000000000003c __CCP__
+     /tmp/ccaSfqOo.s:6      *ABS*:0000000000000010 __tmp_reg__
+     /tmp/ccaSfqOo.s:7      *ABS*:0000000000000011 __zero_reg__
+     /tmp/ccaSfqOo.s:15     .text:0000000000000000 init
                             *COM*:0000000000000001 cur_rx
-     /tmp/ccrRFTEP.s:82     .text.startup:0000000000000000 main
+     /tmp/ccaSfqOo.s:82     .text.startup:0000000000000000 main
                             *COM*:0000000000000001 state
                             *COM*:0000000000000001 cur_tx
-     /tmp/ccrRFTEP.s:189    .text:0000000000000036 __vector_1
-     /tmp/ccrRFTEP.s:249    .text:0000000000000068 __vector_6
+                            *COM*:0000000000000002 touch_new
+                            *COM*:0000000000000002 touch_avg
+                            *COM*:0000000000000001 touch_cnt
+     /tmp/ccaSfqOo.s:358    .text:0000000000000036 __vector_1
+     /tmp/ccaSfqOo.s:418    .text:0000000000000068 __vector_6
                             *COM*:0000000000000001 tx_cnt
-     /tmp/ccrRFTEP.s:367    .text:00000000000000ea __vector_4
-     /tmp/ccrRFTEP.s:396    .text:00000000000000f0 __vector_5
+     /tmp/ccaSfqOo.s:536    .text:00000000000000ea __vector_4
+     /tmp/ccaSfqOo.s:565    .text:00000000000000f0 __vector_5
                             *COM*:0000000000000001 led_val
                             *COM*:0000000000000001 cur_touch
                             *COM*:0000000000000001 cur_conf

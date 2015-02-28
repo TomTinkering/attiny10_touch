@@ -77,11 +77,33 @@ typedef enum msg_t {
 #define CONF_BIT_MASK (B(MSG_SLOT_TAKEN) | B(MSG_RESERVED) | B(MSG_IS_TOUCHED))
 #define CONF_LED_MASK (B(LED0) | B(LED1) | B(LED2))
 
+
+//multiplier to avoid floating point...
+#define FILTER_MAX (1024)
+//portion of multiplier that is given to new value (USE POWER OF 2!!)
+#define FILTER_NEW (32)
+//portion of multiplier that is given to running average
+#define FILTER_AVG (FILTER_MAX-FILTER_NEW)
+//low pass filter, use sparingly, costly instruction wise
+#define TOUCH_FILTER_LP(avg,new) ((uint16_t)(( (((uint32_t)avg)*FILTER_AVG) + (((uint32_t)new)*FILTER_NEW) ) / FILTER_MAX))
+
+
+//level above measurement noise level to detect touch
+#define TOUCH_THRESHOLD (512)
+//number of measurements in a row, that are above threshold needed to trigger touch
+#define TOUCH_VALID_CNT (2)
+
+
 uint16_t    cur_meas;
 uint8_t     cur_conf,cur_touch;
 uint8_t     cur_rx,cur_tx,tx_cnt;
 uint8_t     state;
 uint8_t     led_val;
+
+uint8_t     touch_cnt;
+uint16_t    touch_new;
+uint16_t    touch_avg; //use sparsely on 8-bit machine...
+
 
 
 int main(void) {
@@ -93,7 +115,6 @@ int main(void) {
       //if uart cycle has completed (both interrupts disabled) prepare next
       if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
       {
-
           //check if message is for us
           if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
 
@@ -115,33 +136,48 @@ int main(void) {
           EIFR  = (1<<INTF0); //clear external interrupt state
           EIMSK = (1 << INT0);
 
+      //uart is only processed at end of each byte, leave all the other time for
+      //processing measurements (this possibly allows higher UART speeds)
+      } else {
+
+
+
+          //check for touch timeout / process measurement
+          if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
+
+              //get input capture time, or limit if no capture occured
+              touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+              //determine new running average
+              touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
+              //compare new measurement to running average
+              if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
+                  touch_cnt++;
+                  if(touch_cnt >= TOUCH_VALID_CNT){
+                      touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+                      SET(state,TOUCHED);
+                  }
+              } else {
+                  touch_cnt = 0;
+              }
+
+              //start new measurement (clear ICF0, set pin to LOW)
+              SET(TIFR0,ICF0);
+              CLR(PORTB,TOUCH_PIN);
+              SET(DDRB,TOUCH_PIN);
+          }
+
+          //enable or disable led based on system state
+          if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+              //set led pin to output
+              SET(DDRB,LED_PIN);
+              CLR(PUEB,LED_PIN);
+          } else { //turn off led
+              //just setting pin to input is enough
+              CLR(DDRB,LED_PIN);
+              SET(PUEB,LED_PIN);
+          }
+
       }
-
-      //check for touch timeout / process measurement
-      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
-          //disable touch interrupt
-          CLR(TIMSK0,TOIE0);
-          //set touch pin to output
-          SET(DDRB,TOUCH_PIN);
-          //process measurement
-                  //....
-          //start new measurement
-          SET(TIMSK0,TOIE0);
-      }
-
-
-      //enable or disable led based on system state
-      if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
-          //set led pin to output
-          SET(DDRB,LED_PIN);
-          CLR(PUEB,LED_PIN);
-      } else { //turn off led
-          //just setting pin to input is enough
-          CLR(DDRB,LED_PIN);
-          SET(PUEB,LED_PIN);
-      }
-
-
 
   }
 
@@ -259,7 +295,7 @@ ISR(TIM0_OVF_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
     //PORTB &= ~(1 << LED_PIN);
     //DDRB &= ~(1 << TOUCH_PIN);
-    asm("sbi 2,0");
+    asm("cbi 2,0");
     asm("cbi 1,1");
     asm("reti");
 }
@@ -272,7 +308,7 @@ ISR(TIM0_COMPA_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
     //PORTB &= ~(1 << LED_PIN);
     //DDRB &= ~(1 << TOUCH_PIN);
-    asm("cbi 2,0");
+    asm("sbi 2,0");
     asm("reti");
 }
 

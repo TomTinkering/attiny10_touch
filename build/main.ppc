@@ -490,12 +490,17 @@ typedef enum msg_t {
     MSG_LED2 = 7
 
 } msg_t;
-# 80 "main.c"
+# 97 "main.c"
 uint16_t cur_meas;
 uint8_t cur_conf,cur_touch;
 uint8_t cur_rx,cur_tx,tx_cnt;
 uint8_t state;
 uint8_t led_val;
+
+uint8_t touch_cnt;
+uint16_t touch_new;
+uint16_t touch_avg;
+
 
 
 int main(void) {
@@ -507,7 +512,7 @@ int main(void) {
 
       if( !((*(volatile uint8_t *)((0x13) + 0x00)) & (1 << 0)) && !((*(volatile uint8_t *)((0x2B) + 0x00)) & (1 << 2)) )
       {
-
+          asm("nop");
 
           if( (cur_rx & (1 << MSG_SLOT_TAKEN)) && (state & (1 << TAKEN_PASSED)) ){
 
@@ -528,34 +533,50 @@ int main(void) {
 
           (*(volatile uint8_t *)((0x14) + 0x00)) = (1<<0);
           (*(volatile uint8_t *)((0x13) + 0x00)) = (1 << 0);
-
-      }
-
-
-      if( ((*(volatile uint16_t *)((0x28) + 0x00)) >= ((uint16_t)40000)) ) {
-
-          ((*(volatile uint8_t *)((0x2B) + 0x00)) &= ~(1 << 0));
-
-          ((*(volatile uint8_t *)((0x01) + 0x00)) |= (1 << (1)));
+          asm("nop");
 
 
 
-          ((*(volatile uint8_t *)((0x2B) + 0x00)) |= (1 << 0));
-      }
-
-
-
-      if( (state & (1 << LED_EN)) || ((state & (1 << SET_LED_DIRECT)) && (state & (1 << TOUCHED))) ){
-
-          ((*(volatile uint8_t *)((0x01) + 0x00)) |= (1 << (0)));
-          ((*(volatile uint8_t *)((0x03) + 0x00)) &= ~(1 << (0)));
       } else {
 
-          ((*(volatile uint8_t *)((0x01) + 0x00)) &= ~(1 << (0)));
-          ((*(volatile uint8_t *)((0x03) + 0x00)) |= (1 << (0)));
+
+
+
+          if( ((*(volatile uint16_t *)((0x28) + 0x00)) >= ((uint16_t)40000)) ) {
+
+
+              touch_new=(((*(volatile uint8_t *)((0x2A) + 0x00)) & (1 << 5))) ? (*(volatile uint16_t *)((0x22) + 0x00)) : ((uint16_t)40000);
+
+              touch_avg = ((uint16_t)(( (((uint32_t)touch_avg)*((1024)-(32))) + (((uint32_t)touch_new)*(32)) ) / (1024)));
+
+              if(touch_new > (touch_avg + (512))){
+                  touch_cnt++;
+                  if(touch_cnt >= (2)){
+                      touch_cnt = (2);
+                      (state |= (1 << TOUCHED));
+                  }
+              } else {
+                  touch_cnt = 0;
+              }
+
+
+              ((*(volatile uint8_t *)((0x2A) + 0x00)) |= (1 << 5));
+              ((*(volatile uint8_t *)((0x02) + 0x00)) &= ~(1 << (1)));
+              ((*(volatile uint8_t *)((0x01) + 0x00)) |= (1 << (1)));
+          }
+
+
+          if( (state & (1 << LED_EN)) || ((state & (1 << SET_LED_DIRECT)) && (state & (1 << TOUCHED))) ){
+
+              ((*(volatile uint8_t *)((0x01) + 0x00)) |= (1 << (0)));
+              ((*(volatile uint8_t *)((0x03) + 0x00)) &= ~(1 << (0)));
+          } else {
+
+              ((*(volatile uint8_t *)((0x01) + 0x00)) &= ~(1 << (0)));
+              ((*(volatile uint8_t *)((0x03) + 0x00)) |= (1 << (0)));
+          }
+
       }
-
-
 
   }
 
@@ -598,7 +619,7 @@ void init(void){
     __asm__ __volatile__ ("sei" ::: "memory");
 
 }
-# 198 "main.c"
+# 236 "main.c"
 void __vector_1 (void) __attribute__ ((signal,used, externally_visible)) ; void __vector_1 (void){
 
 
@@ -646,12 +667,12 @@ void __vector_6 (void) __attribute__ ((signal,used, externally_visible)) ; void 
     }
 
 }
-# 258 "main.c"
+# 296 "main.c"
 void __vector_4 (void) __attribute__ ((signal,used, externally_visible)) __attribute__((naked)); void __vector_4 (void){
 
 
 
-    asm("sbi 2,0");
+    asm("cbi 2,0");
     asm("cbi 1,1");
     asm("reti");
 }
@@ -664,6 +685,6 @@ void __vector_5 (void) __attribute__ ((signal,used, externally_visible)) __attri
 
 
 
-    asm("cbi 2,0");
+    asm("sbi 2,0");
     asm("reti");
 }

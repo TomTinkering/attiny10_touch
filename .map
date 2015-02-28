@@ -12,11 +12,14 @@ Common symbol       size              file
 
 tx_cnt              0x1               build/main.o
 cur_touch           0x1               build/main.o
+touch_cnt           0x1               build/main.o
 led_val             0x1               build/main.o
+touch_avg           0x2               build/main.o
 state               0x1               build/main.o
 cur_meas            0x2               build/main.o
 cur_conf            0x1               build/main.o
 cur_rx              0x1               build/main.o
+touch_new           0x2               build/main.o
 cur_tx              0x1               build/main.o
 
 Memory Configuration
@@ -127,7 +130,7 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
 .rela.plt
  *(.rela.plt)
 
-.text           0x0000000000000000      0x1be
+.text           0x0000000000000000      0x2c8
  *(.vectors)
  .vectors       0x0000000000000000       0x16 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
                 0x0000000000000000                __vectors
@@ -201,16 +204,16 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  .text          0x0000000000000142        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
                 0x0000000000000142                . = ALIGN (0x2)
  *(.text.*)
- .text.startup  0x0000000000000142       0x78 build/main.o
+ .text.startup  0x0000000000000142      0x182 build/main.o
                 0x0000000000000142                main
- .text.libgcc   0x00000000000001ba        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
- .text.libgcc   0x00000000000001ba        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
- .text.libgcc   0x00000000000001ba        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
-                0x00000000000001ba                . = ALIGN (0x2)
+ .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
+ .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
+                0x00000000000002c4                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00000000000001ba        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
-                0x00000000000001ba                exit
-                0x00000000000001ba                _exit
+ .fini9         0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+                0x00000000000002c4                exit
+                0x00000000000002c4                _exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -229,11 +232,11 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x00000000000001ba        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .fini0         0x00000000000002c4        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
  *(.fini0)
-                0x00000000000001be                _etext = .
+                0x00000000000002c8                _etext = .
 
-.data           0x0000000000800040        0x0 load address 0x00000000000001be
+.data           0x0000000000800040        0x0 load address 0x00000000000002c8
                 0x0000000000800040                PROVIDE (__data_start, .)
  *(.data)
  .data          0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
@@ -249,7 +252,7 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
                 0x0000000000800040                _edata = .
                 0x0000000000800040                PROVIDE (__data_end, .)
 
-.bss            0x0000000000800040        0x9
+.bss            0x0000000000800040        0xe
                 0x0000000000800040                PROVIDE (__bss_start, .)
  *(.bss)
  .bss           0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
@@ -259,25 +262,28 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  .bss           0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
  *(.bss*)
  *(COMMON)
- COMMON         0x0000000000800040        0x9 build/main.o
+ COMMON         0x0000000000800040        0xe build/main.o
                 0x0000000000800040                tx_cnt
                 0x0000000000800041                cur_touch
-                0x0000000000800042                led_val
-                0x0000000000800043                state
-                0x0000000000800044                cur_meas
-                0x0000000000800046                cur_conf
-                0x0000000000800047                cur_rx
-                0x0000000000800048                cur_tx
-                0x0000000000800049                PROVIDE (__bss_end, .)
-                0x00000000000001be                __data_load_start = LOADADDR (.data)
-                0x00000000000001be                __data_load_end = (__data_load_start + SIZEOF (.data))
+                0x0000000000800042                touch_cnt
+                0x0000000000800043                led_val
+                0x0000000000800044                touch_avg
+                0x0000000000800046                state
+                0x0000000000800047                cur_meas
+                0x0000000000800049                cur_conf
+                0x000000000080004a                cur_rx
+                0x000000000080004b                touch_new
+                0x000000000080004d                cur_tx
+                0x000000000080004e                PROVIDE (__bss_end, .)
+                0x00000000000002c8                __data_load_start = LOADADDR (.data)
+                0x00000000000002c8                __data_load_end = (__data_load_start + SIZEOF (.data))
 
-.noinit         0x0000000000800049        0x0
-                0x0000000000800049                PROVIDE (__noinit_start, .)
+.noinit         0x000000000080004e        0x0
+                0x000000000080004e                PROVIDE (__noinit_start, .)
  *(.noinit*)
-                0x0000000000800049                PROVIDE (__noinit_end, .)
-                0x0000000000800049                _end = .
-                0x0000000000800049                PROVIDE (__heap_start, .)
+                0x000000000080004e                PROVIDE (__noinit_end, .)
+                0x000000000080004e                _end = .
+                0x000000000080004e                PROVIDE (__heap_start, .)
 
 .lock
  *(.lock*)
@@ -331,31 +337,31 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x0000000000000000      0x23a
+.debug_info     0x0000000000000000      0x2a2
  *(.debug_info)
- .debug_info    0x0000000000000000      0x23a build/main.o
+ .debug_info    0x0000000000000000      0x2a2 build/main.o
  *(.gnu.linkonce.wi.*)
 
 .debug_abbrev   0x0000000000000000       0xc9
  *(.debug_abbrev)
  .debug_abbrev  0x0000000000000000       0xc9 build/main.o
 
-.debug_line     0x0000000000000000       0xf9
+.debug_line     0x0000000000000000      0x11f
  *(.debug_line)
- .debug_line    0x0000000000000000       0xf9 build/main.o
+ .debug_line    0x0000000000000000      0x11f build/main.o
 
-.debug_frame    0x0000000000000000       0xb0
+.debug_frame    0x0000000000000000       0xc4
  *(.debug_frame)
- .debug_frame   0x0000000000000000       0xb0 build/main.o
+ .debug_frame   0x0000000000000000       0xc4 build/main.o
 
-.debug_str      0x0000000000000000      0x17b
+.debug_str      0x0000000000000000      0x1a2
  *(.debug_str)
- .debug_str     0x0000000000000000      0x17b build/main.o
-                                        0x1d6 (size before relaxing)
+ .debug_str     0x0000000000000000      0x1a2 build/main.o
+                                        0x1fd (size before relaxing)
 
-.debug_loc      0x0000000000000000       0xac
+.debug_loc      0x0000000000000000       0xf4
  *(.debug_loc)
- .debug_loc     0x0000000000000000       0xac build/main.o
+ .debug_loc     0x0000000000000000       0xf4 build/main.o
 
 .debug_macinfo
  *(.debug_macinfo)
@@ -410,4 +416,7 @@ led_val                                           build/main.o
 main                                              build/main.o
                                                   /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
 state                                             build/main.o
+touch_avg                                         build/main.o
+touch_cnt                                         build/main.o
+touch_new                                         build/main.o
 tx_cnt                                            build/main.o
