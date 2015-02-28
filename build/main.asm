@@ -15,62 +15,62 @@ __zero_reg__ = 17
 init:
 .LFB7:
 	.file 1 "main.c"
-	.loc 1 191 0
+	.loc 1 170 0
 	.cfi_startproc
 /* prologue: function */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 193 0
+	.loc 1 172 0
 /* #APP */
- ;  193 "main.c" 1
+ ;  172 "main.c" 1
 	cli
  ;  0 "" 2
-	.loc 1 196 0
+	.loc 1 175 0
 /* #NOAPP */
 	ldi r24,lo8(-40)
 	out 60-0,r24
-	.loc 1 197 0
+	.loc 1 176 0
 	out 54-0,__zero_reg__
-	.loc 1 198 0
+	.loc 1 177 0
 	out 55-0,__zero_reg__
-	.loc 1 201 0
+	.loc 1 180 0
 	ldi r24,lo8(9)
 	out 2-0,r24
-	.loc 1 202 0
+	.loc 1 181 0
 	ldi r24,lo8(11)
 	out 1-0,r24
-	.loc 1 203 0
+	.loc 1 182 0
 	ldi r24,lo8(4)
 	out 3-0,r24
-	.loc 1 209 0
+	.loc 1 188 0
 	out 46-0,__zero_reg__
-	.loc 1 210 0
+	.loc 1 189 0
 	ldi r24,lo8(-64)
 	out 45-0,r24
-	.loc 1 212 0
+	.loc 1 191 0
 	out 43-0,__zero_reg__
-	.loc 1 213 0
+	.loc 1 192 0
 	out 40+1-0,__zero_reg__
 	out 40-0,__zero_reg__
-	.loc 1 218 0
+	.loc 1 197 0
 	ldi r24,lo8(-86)
 	sts cur_rx,r24
-	.loc 1 220 0
+	.loc 1 199 0
 	in r24,43-0
 	ori r24,lo8(1)
 	out 43-0,r24
-	.loc 1 221 0
+	.loc 1 200 0
 	in r24,45-0
 	ori r24,lo8(1)
 	out 45-0,r24
-	.loc 1 222 0
+	.loc 1 201 0
 /* #APP */
- ;  222 "main.c" 1
+ ;  201 "main.c" 1
 	sei
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 224 0
+	.loc 1 203 0
 /* #NOAPP */
 	ret
 	.cfi_endproc
@@ -93,136 +93,64 @@ main:
 	.cfi_offset 29, -3
 	rcall .
 	rcall .
-	rcall .
 .LCFI2:
-	.cfi_def_cfa_offset 10
+	.cfi_def_cfa_offset 8
 	in r28,__SP_L__
 	in r29,__SP_H__
 .LCFI3:
 	.cfi_def_cfa_register 28
 /* prologue: function */
-/* frame size = 6 */
-/* stack size = 8 */
-.L__stack_usage = 8
+/* frame size = 4 */
+/* stack size = 6 */
+.L__stack_usage = 6
 	.loc 1 111 0
 	rcall init
 	.loc 1 137 0
-	ldi r18,lo8(1)
-	.loc 1 129 0
-	ldi r30,lo8(-1)
-	.loc 1 158 0
-	ldi r19,lo8(2)
+	ldi r30,lo8(2)
 .L15:
 	.loc 1 116 0
 	sbic 19-0,0
 	rjmp .L4
 	.loc 1 116 0 is_stmt 0 discriminator 1
 	in __tmp_reg__,43-0
-	sbrc __tmp_reg__,2
-	rjmp .L4
-	.loc 1 118 0 is_stmt 1
-/* #APP */
- ;  118 "main.c" 1
-	nop
- ;  0 "" 2
-	.loc 1 120 0
-/* #NOAPP */
-	lds r24,cur_rx
-	sbrs r24,0
-	rjmp .L5
-	.loc 1 120 0 is_stmt 0 discriminator 1
-	lds r25,state
-	sbrs r25,0
-	rjmp .L5
-	.loc 1 123 0 is_stmt 1
-	andi r25,lo8(25)
-	mov r22,r24
-	andi r22,lo8(-26)
-	or r25,r22
-	.loc 1 124 0
-	mov r22,r25
-	andi r22,lo8(8)
-	ori r24,lo8(1)
-	or r22,r24
-	sts cur_tx,r22
-	.loc 1 126 0
-	andi r25,lo8(-10)
-	sts state,r25
-	.loc 1 128 0
-	ori r25,lo8(31)
-	out 39-0,r25
-	.loc 1 129 0
-	out 38-0,r30
-	rjmp .L6
-.L5:
-	.loc 1 133 0
-	sts cur_tx,r24
-.L6:
-	.loc 1 137 0
-	out 20-0,r18
-	.loc 1 138 0
-	out 19-0,r18
-	.loc 1 139 0
-/* #APP */
- ;  139 "main.c" 1
-	nop
- ;  0 "" 2
-/* #NOAPP */
+	sbrs __tmp_reg__,2
 	rjmp .L15
 .L4:
-	.loc 1 148 0
+	.loc 1 127 0 is_stmt 1
 	in r24,40-0
 	in r25,40+1-0
 	ldi r20,hi8(-25536)
 	cpi r24,lo8(-25536)
 	cpc r25,r20
 	brsh .+2
-	rjmp .L8
-	.loc 1 151 0
+	rjmp .L6
+	.loc 1 130 0
 	in __tmp_reg__,42-0
 	sbrs __tmp_reg__,5
-	rjmp .L14
-	.loc 1 151 0 is_stmt 0 discriminator 1
-	in r22,34-0
-	in r23,34+1-0
-	subi r28,lo8(-(5+2))
-	sbci r29,hi8(-(5+2))
-	st -Y,r23
-	st -Y,r22
-	subi r28,lo8(5)
-	sbci r29,hi8(5)
-	rjmp .L9
-.L14:
-	.loc 1 151 0
-	ldi r24,lo8(-25536)
-	ldi r25,hi8(-25536)
-	subi r28,lo8(-(5+2))
-	sbci r29,hi8(-(5+2))
-	st -Y,r25
-	st -Y,r24
-	subi r28,lo8(5)
-	sbci r29,hi8(5)
-.L9:
-	.loc 1 151 0 discriminator 3
-	subi r28,lo8(-(5))
-	sbci r29,hi8(-(5))
-	ld r26,Y+
-	ld r27,Y
-	subi r28,lo8(5+1)
-	sbci r29,hi8(5+1)
-	sts touch_new+1,r27
-	sts touch_new,r26
-	.loc 1 153 0 is_stmt 1 discriminator 3
-	mov r20,r26
-	mov r21,r27
-	ldi r22,lo8(0)
-	ldi r23,hi8(0)
+	rjmp .L12
+	.loc 1 130 0 is_stmt 0 discriminator 1
+	in r18,34-0
+	in r19,34+1-0
+	rjmp .L7
+.L12:
+	.loc 1 130 0
+	ldi r18,lo8(-25536)
+	ldi r19,hi8(-25536)
+.L7:
+	.loc 1 130 0 discriminator 3
+	sts touch_new+1,r19
+	sts touch_new,r18
+	.loc 1 132 0 is_stmt 1 discriminator 3
+	mov r22,r18
+	mov r23,r19
+	ldi r24,lo8(0)
+	ldi r25,hi8(0)
 	subi r28,lo8(-(1))
 	sbci r29,hi8(-(1))
-	st Y+,r20
-	st Y+,r21
 	st Y+,r22
-	st Y,r23
+	st Y+,r23
+	st Y+,r24
+	st Y,r25
 	subi r28,lo8(1+3)
 	sbci r29,hi8(1+3)
 	lds r20,touch_avg
@@ -280,7 +208,7 @@ main:
 	sbci r29,hi8(1+3)
 	sts touch_avg+1,r21
 	sts touch_avg,r20
-	.loc 1 155 0 discriminator 3
+	.loc 1 134 0 discriminator 3
 	subi r28,lo8(-(1))
 	sbci r29,hi8(-(1))
 	ld r24,Y+
@@ -289,64 +217,58 @@ main:
 	sbci r29,hi8(1+1)
 	subi r24,lo8(-(512))
 	sbci r25,hi8(-(512))
-	subi r28,lo8(-(5))
-	sbci r29,hi8(-(5))
-	ld r22,Y+
-	ld r23,Y
-	subi r28,lo8(5+1)
-	sbci r29,hi8(5+1)
-	cp r24,r22
-	cpc r25,r23
-	brsh .L10
-	.loc 1 156 0
+	cp r24,r18
+	cpc r25,r19
+	brsh .L8
+	.loc 1 135 0
 	lds r24,touch_cnt
 	subi r24,lo8(-(1))
 	sts touch_cnt,r24
-	.loc 1 157 0
+	.loc 1 136 0
 	cpi r24,lo8(2)
-	brlo .L11
-	.loc 1 158 0
-	sts touch_cnt,r19
-	.loc 1 159 0
+	brlo .L9
+	.loc 1 137 0
+	sts touch_cnt,r30
+	.loc 1 138 0
 	lds r24,state
 	ori r24,lo8(8)
 	sts state,r24
-	rjmp .L11
-.L10:
-	.loc 1 162 0
+	rjmp .L9
+.L8:
+	.loc 1 141 0
 	sts touch_cnt,__zero_reg__
-.L11:
-	.loc 1 166 0
+.L9:
+	.loc 1 145 0
 	in r24,42-0
 	ori r24,lo8(32)
 	out 42-0,r24
-	.loc 1 167 0
+	.loc 1 146 0
 	cbi 2-0,1
-	.loc 1 168 0
+	.loc 1 147 0
 	sbi 1-0,1
-.L8:
-	.loc 1 172 0
+.L6:
+	.loc 1 151 0
 	lds r24,state
 	ldi r25,lo8(0)
 	sbrc r24,1
-	rjmp .L12
+	rjmp .L10
 	.loc 1 109 0 discriminator 1
 	andi r24,lo8(12)
 	andi r25,hi8(12)
-	.loc 1 172 0 discriminator 1
+	.loc 1 151 0 discriminator 1
 	cpi r24,12
 	cpc r25,__zero_reg__
-	brne .L13
-.L12:
-	.loc 1 174 0
+	brne .L11
+.L10:
+	.loc 1 153 0
 	sbi 1-0,0
-	.loc 1 175 0
+	.loc 1 154 0
 	cbi 3-0,0
 	rjmp .L15
-.L13:
-	.loc 1 178 0
+.L11:
+	.loc 1 157 0
 	cbi 1-0,0
-	.loc 1 179 0
+	.loc 1 158 0
 	sbi 3-0,0
 	rjmp .L15
 	.cfi_endproc
@@ -357,7 +279,7 @@ main:
 	.type	__vector_1, @function
 __vector_1:
 .LFB8:
-	.loc 1 236 0
+	.loc 1 215 0
 	.cfi_startproc
 	push r17
 .LCFI4:
@@ -382,12 +304,12 @@ __vector_1:
 /* frame size = 0 */
 /* stack size = 5 */
 .L__stack_usage = 5
-	.loc 1 239 0
+	.loc 1 218 0
 /* #APP */
- ;  239 "main.c" 1
+ ;  218 "main.c" 1
 	sei
  ;  0 "" 2
-	.loc 1 242 0
+	.loc 1 221 0
 /* #NOAPP */
 	in r24,40-0
 	in r25,40+1-0
@@ -395,14 +317,14 @@ __vector_1:
 	sbci r25,hi8(-(403))
 	out 38+1-0,r25
 	out 38-0,r24
-	.loc 1 244 0
+	.loc 1 223 0
 	out 19-0,__zero_reg__
-	.loc 1 245 0
+	.loc 1 224 0
 	in r24,43-0
 	ori r24,lo8(4)
 	out 43-0,r24
 /* epilogue start */
-	.loc 1 247 0
+	.loc 1 226 0
 	pop r25
 	pop r24
 	pop r16
@@ -417,7 +339,7 @@ __vector_1:
 	.type	__vector_6, @function
 __vector_6:
 .LFB9:
-	.loc 1 250 0
+	.loc 1 229 0
 	.cfi_startproc
 	push r17
 .LCFI8:
@@ -450,12 +372,12 @@ __vector_6:
 /* frame size = 0 */
 /* stack size = 7 */
 .L__stack_usage = 7
-	.loc 1 253 0
+	.loc 1 232 0
 /* #APP */
- ;  253 "main.c" 1
+ ;  232 "main.c" 1
 	sei
  ;  0 "" 2
-	.loc 1 256 0
+	.loc 1 235 0
 /* #NOAPP */
 	in r24,38-0
 	in r25,38+1-0
@@ -463,31 +385,31 @@ __vector_6:
 	sbci r25,hi8(-(194))
 	out 38+1-0,r25
 	out 38-0,r24
-	.loc 1 259 0
+	.loc 1 238 0
 	lds r24,tx_cnt
 	tst r24
 	brne .L18
-	.loc 1 261 0
+	.loc 1 240 0
 	cbi 2-0,3
-	.loc 1 263 0
+	.loc 1 242 0
 	ldi r24,lo8(1)
 	sts tx_cnt,r24
 	rjmp .L17
 .L18:
-	.loc 1 264 0
+	.loc 1 243 0
 	cpi r24,lo8(9)
 	brsh .L20
-	.loc 1 266 0
+	.loc 1 245 0
 	in r24,0-0
 	lsr r24
 	lsr r24
 	andi r24,lo8(1)
 	lds r25,cur_rx
 	or r24,r25
-	.loc 1 267 0
+	.loc 1 246 0
 	lsl r24
 	sts cur_rx,r24
-	.loc 1 269 0
+	.loc 1 248 0
 	in r22,2-0
 	lds r23,cur_tx
 	mov r24,r23
@@ -503,22 +425,60 @@ __vector_6:
 	andi r22,lo8(-9)
 	or r22,r24
 	out 2-0,r22
-	.loc 1 270 0
+	.loc 1 249 0
 	lsr r23
 	sts cur_tx,r23
 	rjmp .L17
 .L20:
-	.loc 1 274 0
+	.loc 1 253 0
 	sbi 2-0,3
-	.loc 1 277 0
+	.loc 1 255 0
 	in r24,43-0
 	andi r24,lo8(-5)
 	out 43-0,r24
-	.loc 1 279 0
+	.loc 1 257 0
 	sts tx_cnt,__zero_reg__
+	.loc 1 260 0
+	lds r24,cur_rx
+	sbrs r24,0
+	rjmp .L21
+	.loc 1 260 0 is_stmt 0 discriminator 1
+	lds r25,state
+	sbrs r25,0
+	rjmp .L21
+	.loc 1 263 0 is_stmt 1
+	andi r25,lo8(25)
+	mov r22,r24
+	andi r22,lo8(-26)
+	or r25,r22
+	.loc 1 264 0
+	mov r22,r25
+	andi r22,lo8(8)
+	ori r24,lo8(1)
+	or r22,r24
+	sts cur_tx,r22
+	.loc 1 266 0
+	andi r25,lo8(-10)
+	sts state,r25
+	.loc 1 268 0
+	ori r25,lo8(31)
+	out 39-0,r25
+	.loc 1 269 0
+	ldi r24,lo8(-1)
+	out 38-0,r24
+	rjmp .L22
+.L21:
+	.loc 1 273 0
+	sts cur_tx,r24
+.L22:
+	.loc 1 277 0
+	ldi r24,lo8(1)
+	out 20-0,r24
+	.loc 1 278 0
+	out 19-0,r24
 .L17:
 /* epilogue start */
-	.loc 1 282 0
+	.loc 1 281 0
 	pop r25
 	pop r24
 	pop r23
@@ -535,27 +495,27 @@ __vector_6:
 	.type	__vector_4, @function
 __vector_4:
 .LFB10:
-	.loc 1 296 0
+	.loc 1 295 0
 	.cfi_startproc
 /* prologue: naked */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 300 0
+	.loc 1 299 0
 /* #APP */
- ;  300 "main.c" 1
+ ;  299 "main.c" 1
 	cbi 2,0
+ ;  0 "" 2
+	.loc 1 300 0
+ ;  300 "main.c" 1
+	cbi 1,1
  ;  0 "" 2
 	.loc 1 301 0
  ;  301 "main.c" 1
-	cbi 1,1
- ;  0 "" 2
-	.loc 1 302 0
- ;  302 "main.c" 1
 	reti
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 303 0
+	.loc 1 302 0
 /* #NOAPP */
 	.cfi_endproc
 .LFE10:
@@ -564,23 +524,23 @@ __vector_4:
 	.type	__vector_5, @function
 __vector_5:
 .LFB11:
-	.loc 1 309 0
+	.loc 1 308 0
 	.cfi_startproc
 /* prologue: naked */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 313 0
+	.loc 1 312 0
 /* #APP */
- ;  313 "main.c" 1
+ ;  312 "main.c" 1
 	sbi 2,0
  ;  0 "" 2
-	.loc 1 314 0
- ;  314 "main.c" 1
+	.loc 1 313 0
+ ;  313 "main.c" 1
 	reti
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 315 0
+	.loc 1 314 0
 /* #NOAPP */
 	.cfi_endproc
 .LFE11:
@@ -726,7 +686,7 @@ __vector_5:
 	.byte	0x1
 	.long	.LASF28
 	.byte	0x1
-	.byte	0xbf
+	.byte	0xaa
 	.byte	0x1
 	.long	.LFB7
 	.long	.LFE7
@@ -748,7 +708,7 @@ __vector_5:
 	.byte	0x1
 	.long	.LASF29
 	.byte	0x1
-	.byte	0xec
+	.byte	0xd7
 	.byte	0x1
 	.long	.LFB8
 	.long	.LFE8
@@ -757,7 +717,7 @@ __vector_5:
 	.byte	0x1
 	.long	.LASF30
 	.byte	0x1
-	.byte	0xfa
+	.byte	0xe5
 	.byte	0x1
 	.long	.LFB9
 	.long	.LFE9
@@ -766,7 +726,7 @@ __vector_5:
 	.byte	0x1
 	.long	.LASF31
 	.byte	0x1
-	.word	0x128
+	.word	0x127
 	.byte	0x1
 	.long	.LFB10
 	.long	.LFE10
@@ -778,7 +738,7 @@ __vector_5:
 	.byte	0x1
 	.long	.LASF32
 	.byte	0x1
-	.word	0x135
+	.word	0x134
 	.byte	0x1
 	.long	.LFB11
 	.long	.LFE11
@@ -1164,12 +1124,12 @@ __vector_5:
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
-	.sleb128 10
+	.sleb128 8
 	.long	.LCFI3
 	.long	.LFE6
 	.word	0x2
 	.byte	0x8c
-	.sleb128 10
+	.sleb128 8
 	.long	0
 	.long	0
 .LLST1:

@@ -130,7 +130,7 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
 .rela.plt
  *(.rela.plt)
 
-.text           0x0000000000000000      0x2c8
+.text           0x0000000000000000      0x290
  *(.vectors)
  .vectors       0x0000000000000000       0x16 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
                 0x0000000000000000                __vectors
@@ -193,27 +193,27 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
                 0x000000000000004c                __vector_2
                 0x000000000000004c                __vector_8
                 0x000000000000004c                __vector_10
- .text          0x000000000000004e       0xf4 build/main.o
+ .text          0x000000000000004e      0x128 build/main.o
                 0x000000000000004e                init
                 0x0000000000000084                __vector_1
                 0x00000000000000b6                __vector_6
-                0x0000000000000138                __vector_4
-                0x000000000000013e                __vector_5
- .text          0x0000000000000142        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
- .text          0x0000000000000142        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
- .text          0x0000000000000142        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
-                0x0000000000000142                . = ALIGN (0x2)
+                0x000000000000016c                __vector_4
+                0x0000000000000172                __vector_5
+ .text          0x0000000000000176        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .text          0x0000000000000176        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
+ .text          0x0000000000000176        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
+                0x0000000000000176                . = ALIGN (0x2)
  *(.text.*)
- .text.startup  0x0000000000000142      0x182 build/main.o
-                0x0000000000000142                main
- .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
- .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
- .text.libgcc   0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
-                0x00000000000002c4                . = ALIGN (0x2)
+ .text.startup  0x0000000000000176      0x116 build/main.o
+                0x0000000000000176                main
+ .text.libgcc   0x000000000000028c        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .text.libgcc   0x000000000000028c        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_copy_data.o)
+ .text.libgcc   0x000000000000028c        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_clear_bss.o)
+                0x000000000000028c                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00000000000002c4        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
-                0x00000000000002c4                exit
-                0x00000000000002c4                _exit
+ .fini9         0x000000000000028c        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+                0x000000000000028c                exit
+                0x000000000000028c                _exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -232,11 +232,11 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x00000000000002c4        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
+ .fini0         0x000000000000028c        0x4 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a(_exit.o)
  *(.fini0)
-                0x00000000000002c8                _etext = .
+                0x0000000000000290                _etext = .
 
-.data           0x0000000000800040        0x0 load address 0x00000000000002c8
+.data           0x0000000000800040        0x0 load address 0x0000000000000290
                 0x0000000000800040                PROVIDE (__data_start, .)
  *(.data)
  .data          0x0000000000800040        0x0 /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/lib/avrtiny10/crttn10.o
@@ -275,8 +275,8 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
                 0x000000000080004b                touch_new
                 0x000000000080004d                cur_tx
                 0x000000000080004e                PROVIDE (__bss_end, .)
-                0x00000000000002c8                __data_load_start = LOADADDR (.data)
-                0x00000000000002c8                __data_load_end = (__data_load_start + SIZEOF (.data))
+                0x0000000000000290                __data_load_start = LOADADDR (.data)
+                0x0000000000000290                __data_load_end = (__data_load_start + SIZEOF (.data))
 
 .noinit         0x000000000080004e        0x0
                 0x000000000080004e                PROVIDE (__noinit_start, .)
@@ -346,9 +346,9 @@ LOAD /opt/cross/avr/bin/../lib/gcc/avr/4.6.2/avrtiny10/libgcc.a
  *(.debug_abbrev)
  .debug_abbrev  0x0000000000000000       0xc9 build/main.o
 
-.debug_line     0x0000000000000000      0x11f
+.debug_line     0x0000000000000000      0x117
  *(.debug_line)
- .debug_line    0x0000000000000000      0x11f build/main.o
+ .debug_line    0x0000000000000000      0x117 build/main.o
 
 .debug_frame    0x0000000000000000       0xc4
  *(.debug_frame)

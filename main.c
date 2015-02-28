@@ -110,74 +110,47 @@ int main(void) {
 
   init();
 
+  //uart is only processed at end of each byte,in the interrupt handler
+  //this leaves all the other time for processing measurements
+  //this allows higher UART speeds
+
   while(TRUE){
 
-      //if uart cycle has completed (both interrupts disabled) prepare next
-      if( IS_NSET(EIMSK,INT0) && IS_NSET(TIMSK0,OCIE0B) )
-      {
-          //check if message is for us
-          if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+      //check for touch timeout / process measurement
+      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
 
-              //if for us, store settings, refresh button state
-              state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
-              cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
-              //update state flags
-              state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
-              //set led PWM output based on new config (only control upper bits, rest 1)
-              OCR0AH = ~CONF_LED_MASK | state;
-              OCR0AL = 0xFF;
-
-          } else {
-              //if not for us pass on untouched
-              cur_tx = cur_rx;
-          }
-
-          //go to uart idle state (enable EXTI)
-          EIFR  = (1<<INTF0); //clear external interrupt state
-          EIMSK = (1 << INT0);
-
-      //uart is only processed at end of each byte, leave all the other time for
-      //processing measurements (this possibly allows higher UART speeds)
-      } else {
-
-
-
-          //check for touch timeout / process measurement
-          if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
-
-              //get input capture time, or limit if no capture occured
-              touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
-              //determine new running average
-              touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
-              //compare new measurement to running average
-              if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
-                  touch_cnt++;
-                  if(touch_cnt >= TOUCH_VALID_CNT){
-                      touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
-                      SET(state,TOUCHED);
-                  }
-              } else {
-                  touch_cnt = 0;
+          //get input capture time, or limit if no capture occured
+          touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+          //determine new running average
+          touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
+          //compare new measurement to running average
+          if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
+              touch_cnt++;
+              if(touch_cnt >= TOUCH_VALID_CNT){
+                  touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+                  SET(state,TOUCHED);
               }
-
-              //start new measurement (clear ICF0, set pin to LOW)
-              SET(TIFR0,ICF0);
-              CLR(PORTB,TOUCH_PIN);
-              SET(DDRB,TOUCH_PIN);
+          } else {
+              touch_cnt = 0;
           }
 
-          //enable or disable led based on system state
-          if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
-              //set led pin to output
-              SET(DDRB,LED_PIN);
-              CLR(PUEB,LED_PIN);
-          } else { //turn off led
-              //just setting pin to input is enough
-              CLR(DDRB,LED_PIN);
-              SET(PUEB,LED_PIN);
-          }
-
+          //start new measurement (clear ICF0, set pin to LOW)
+          SET(TIFR0,ICF0);
+          CLR(PORTB,TOUCH_PIN);
+          SET(DDRB,TOUCH_PIN);
       }
+
+      //enable or disable led based on system state
+      if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+          //set led pin to output
+          SET(DDRB,LED_PIN);
+          CLR(PUEB,LED_PIN);
+      } else { //turn off led
+          //just setting pin to input is enough
+          CLR(DDRB,LED_PIN);
+          SET(PUEB,LED_PIN);
+      }
+
 
   }
 
@@ -270,11 +243,31 @@ ISR(TIM0_COMPB_vect){
     } else {
         //don't sample, set TX high
         SET(PORTB,UART_TX_PIN);
-        //enable external interrupt, enable COMPA interrupt
-        //EIMSK = 0x01; TODO:think about sync with main
+        //disable this interrupt until next RX byte
         CLR(TIMSK0,OCIE0B);
         //we are done, set tx_counter to 0
         tx_cnt = 0x00;
+
+        //cur_rx done, check if message is for us
+        if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+
+            //if for us, store settings, refresh button state
+            state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
+            cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
+            //update state flags
+            state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
+            //set led PWM output based on new config (only control upper bits, rest 1)
+            OCR0AH = ~CONF_LED_MASK | state;
+            OCR0AL = 0xFF;
+
+        } else {
+            //if not for us pass on untouched
+            cur_tx = cur_rx;
+        }
+
+        //go to uart idle state (enable EXTI)
+        EIFR  = (1<<INTF0); //clear external interrupt state
+        EIMSK = (1 << INT0);
     }
 
 }
