@@ -86,7 +86,7 @@ typedef enum msg_t {
 #define FILTER_AVG (FILTER_MAX-FILTER_NEW)
 //low pass filter, use sparingly, costly instruction wise
 #define TOUCH_FILTER_LP(avg,new) ((uint16_t)(( (((uint32_t)avg)*FILTER_AVG) + (((uint32_t)new)*FILTER_NEW) ) / FILTER_MAX))
-
+#define TOUCH_AVG_INIT (8000)
 
 //level above measurement noise level to detect touch
 #define TOUCH_THRESHOLD (512)
@@ -184,6 +184,7 @@ void init(void){
     TCNT0  = 0x0000;
 
     //TODO: RSTDISBL bit ...fuse
+    touch_avg = TOUCH_AVG_INIT;
 
     //since all interrupts are disabled, cur_rx will be read as first config
     cur_rx = DEFAULT_CONFIGURATION;
