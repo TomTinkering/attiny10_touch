@@ -56,8 +56,8 @@ typedef enum msg_t {
 #define UART_OCR_INC        ((UART_BIT_TIME / 2)-UART_OCR_OFFSET)
 #define UART_HALF_OCR_INC   (UART_BIT_TIME-UART_OCR_OFFSET)
 
-#define UART_RX_PIN    (PB2)
-#define UART_TX_PIN    (PB3)
+#define UART_RX_PIN    (PIN2)
+#define UART_TX_PIN    (PIN3)
 #define UART_START     (0)
 #define UART_STOP      (9)
 
@@ -71,7 +71,8 @@ typedef enum msg_t {
 #define SET(var,b)      (var |= (1 << b))
 #define CLR(var,b)      (var &= ~(1 << b))
 #define B(b)            (1 << b)
-
+//TODO: fix somewhat ugly macro...
+#define COPY_BIT(src,src_bit,dest,dest_bit) if(IS_SET(src,src_bit)){ SET(dest,dest_bit); } else {  CLR(dest,dest_bit);  }
 
 //mask that determina what bits not to cpoy from rx msg
 #define CONF_BIT_MASK (B(MSG_SLOT_TAKEN) | B(MSG_RESERVED) | B(MSG_IS_TOUCHED))
@@ -198,8 +199,6 @@ void init(void){
 
 
 
-
-
 //=====================================
 //INTERRUPT HANDLERS
 //=====================================
@@ -213,10 +212,13 @@ ISR(INT0_vect){
     //set first sample time
     OCR0A = TCNT0+UART_HALF_OCR_INC;
     //disable external interrupt, enable COMPA interrupt
-    EIMSK = 0x00;
+    CLR(EIMSK,INT0);
     SET(TIMSK0,OCIE0B);
 
 }
+
+
+
 
 //OCR0A interrupt handler
 ISR(TIM0_COMPB_vect){
@@ -235,12 +237,13 @@ ISR(TIM0_COMPB_vect){
         tx_cnt++;
     } else if (tx_cnt < UART_STOP) {
         //store RX samle
-        cur_rx |= ((PINB >> 2) & 0x01);
+        COPY_BIT(PINB,UART_RX_PIN,cur_rx,0x00);
         cur_rx = (cur_rx << 1);
         //set TX output
-        PORTB  = (PORTB & ~(1 << UART_TX_PIN)) | ((cur_tx & 0x01) << UART_TX_PIN);
+        COPY_BIT(cur_tx,0,PORTB,UART_TX_PIN);
         cur_tx = (cur_tx >> 1);
         //increment tx counter
+        tx_cnt++;
     } else {
         //don't sample, set TX high
         SET(PORTB,UART_TX_PIN);
@@ -254,7 +257,7 @@ ISR(TIM0_COMPB_vect){
 
             //if for us, store settings, refresh button state
             state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
-            cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | IS_SET(state,TOUCHED);
+            cur_tx = cur_rx | B(MSG_SLOT_TAKEN) | (state & B(TOUCHED));
             //update state flags
             state &= ~B(TAKEN_PASSED) & ~B(TOUCHED);
             //set led PWM output based on new config (only control upper bits, rest 1)
@@ -267,7 +270,8 @@ ISR(TIM0_COMPB_vect){
         }
 
         //go to uart idle state (enable EXTI)
-        EIFR  = (1<<INTF0); //clear external interrupt state
+        cur_rx = 0x00;
+        EIFR  = (1<<INTF0);
         EIMSK = (1 << INT0);
     }
 
