@@ -15,67 +15,73 @@ __zero_reg__ = 17
 init:
 .LFB7:
 	.file 1 "main.c"
-	.loc 1 163 0
+	.loc 1 159 0
 	.cfi_startproc
 /* prologue: function */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 165 0
+	.loc 1 161 0
 /* #APP */
- ;  165 "main.c" 1
+ ;  161 "main.c" 1
 	cli
  ;  0 "" 2
-	.loc 1 168 0
+	.loc 1 164 0
 /* #NOAPP */
 	ldi r24,lo8(-40)
 	out 60-0,r24
-	.loc 1 169 0
+	.loc 1 165 0
 	out 54-0,__zero_reg__
-	.loc 1 170 0
+	.loc 1 166 0
 	out 55-0,__zero_reg__
-	.loc 1 173 0
+	.loc 1 169 0
 	ldi r24,lo8(9)
 	out 2-0,r24
-	.loc 1 174 0
+	.loc 1 170 0
 	ldi r24,lo8(11)
 	out 1-0,r24
-	.loc 1 175 0
+	.loc 1 171 0
 	ldi r24,lo8(4)
 	out 3-0,r24
-	.loc 1 181 0
-	out 46-0,__zero_reg__
+	.loc 1 174 0
+	sbi 21-0,1
+	.loc 1 175 0
+	sbi 19-0,0
+	.loc 1 176 0
+	sbi 20-0,0
 	.loc 1 182 0
+	out 46-0,__zero_reg__
+	.loc 1 183 0
 	ldi r24,lo8(-64)
 	out 45-0,r24
-	.loc 1 184 0
-	out 43-0,__zero_reg__
 	.loc 1 185 0
+	out 43-0,__zero_reg__
+	.loc 1 186 0
 	out 40+1-0,__zero_reg__
 	out 40-0,__zero_reg__
-	.loc 1 188 0
+	.loc 1 189 0
 	ldi r24,lo8(8000)
 	ldi r25,hi8(8000)
 	sts touch_avg+1,r25
 	sts touch_avg,r24
 	.loc 1 191 0
-	ldi r24,lo8(-86)
-	sts cur_rx,r24
+	sts cur_rx,__zero_reg__
+	.loc 1 192 0
+	ldi r24,lo8(65)
+	sts cur_tx,r24
 	.loc 1 193 0
-	in r24,43-0
-	ori r24,lo8(1)
-	out 43-0,r24
-	.loc 1 194 0
+	sts tx_cnt,__zero_reg__
+	.loc 1 197 0
 	in r24,45-0
 	ori r24,lo8(1)
 	out 45-0,r24
-	.loc 1 195 0
+	.loc 1 200 0
 /* #APP */
- ;  195 "main.c" 1
+ ;  200 "main.c" 1
 	sei
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 197 0
+	.loc 1 202 0
 /* #NOAPP */
 	ret
 	.cfi_endproc
@@ -86,188 +92,16 @@ init:
 	.type	main, @function
 main:
 .LFB6:
-	.loc 1 110 0
+	.loc 1 106 0
 	.cfi_startproc
-	push r28
-.LCFI0:
-	.cfi_def_cfa_offset 3
-	.cfi_offset 28, -2
-	push r29
-.LCFI1:
-	.cfi_def_cfa_offset 4
-	.cfi_offset 29, -3
-	rcall .
-	rcall .
-.LCFI2:
-	.cfi_def_cfa_offset 8
-	in r28,__SP_L__
-	in r29,__SP_H__
-.LCFI3:
-	.cfi_def_cfa_register 28
 /* prologue: function */
-/* frame size = 4 */
-/* stack size = 6 */
-.L__stack_usage = 6
-	.loc 1 112 0
+/* frame size = 0 */
+/* stack size = 0 */
+.L__stack_usage = 0
+	.loc 1 108 0
 	rcall init
-	.loc 1 131 0
-	ldi r30,lo8(2)
-.L12:
-	.loc 1 121 0
-	in r24,40-0
-	in r25,40+1-0
-	ldi r20,hi8(-25536)
-	cpi r24,lo8(-25536)
-	cpc r25,r20
-	brsh .+2
-	rjmp .L4
-	.loc 1 124 0
-	in __tmp_reg__,42-0
-	sbrs __tmp_reg__,5
-	rjmp .L11
-	.loc 1 124 0 is_stmt 0 discriminator 1
-	in r18,34-0
-	in r19,34+1-0
-	rjmp .L5
-.L11:
-	.loc 1 124 0
-	ldi r18,lo8(-25536)
-	ldi r19,hi8(-25536)
-.L5:
-	.loc 1 124 0 discriminator 3
-	sts touch_new+1,r19
-	sts touch_new,r18
-	.loc 1 126 0 is_stmt 1 discriminator 3
-	mov r22,r18
-	mov r23,r19
-	ldi r24,lo8(0)
-	ldi r25,hi8(0)
-	subi r28,lo8(-(1))
-	sbci r29,hi8(-(1))
-	st Y+,r22
-	st Y+,r23
-	st Y+,r24
-	st Y,r25
-	subi r28,lo8(1+3)
-	sbci r29,hi8(1+3)
-	lds r20,touch_avg
-	lds r21,touch_avg+1
-	ldi r22,lo8(0)
-	ldi r23,hi8(0)
-	mov r27,r23
-	mov r26,r22
-	mov r25,r21
-	mov r24,r20
-	ldi r31,5
-1:	lsl r24
-	rol r25
-	rol r26
-	rol r27
-	dec r31
-	brne 1b
-	sub r24,r20
-	sbc r25,r21
-	sbc r26,r22
-	sbc r27,r23
-	subi r28,lo8(-(1))
-	sbci r29,hi8(-(1))
-	ld r20,Y+
-	ld r21,Y+
-	ld r22,Y+
-	ld r23,Y
-	subi r28,lo8(1+3)
-	sbci r29,hi8(1+3)
-	add r20,r24
-	adc r21,r25
-	adc r22,r26
-	adc r23,r27
-	ldi r31,5
-1:	lsl r20
-	rol r21
-	rol r22
-	rol r23
-	dec r31
-	brne 1b
-	ldi r31,10
-1:	lsr r23
-	ror r22
-	ror r21
-	ror r20
-	dec r31
-	brne 1b
-	subi r28,lo8(-(1))
-	sbci r29,hi8(-(1))
-	st Y+,r20
-	st Y+,r21
-	st Y+,r22
-	st Y,r23
-	subi r28,lo8(1+3)
-	sbci r29,hi8(1+3)
-	sts touch_avg+1,r21
-	sts touch_avg,r20
-	.loc 1 128 0 discriminator 3
-	subi r28,lo8(-(1))
-	sbci r29,hi8(-(1))
-	ld r24,Y+
-	ld r25,Y
-	subi r28,lo8(1+1)
-	sbci r29,hi8(1+1)
-	subi r24,lo8(-(512))
-	sbci r25,hi8(-(512))
-	cp r24,r18
-	cpc r25,r19
-	brsh .L6
-	.loc 1 129 0
-	lds r24,touch_cnt
-	subi r24,lo8(-(1))
-	sts touch_cnt,r24
-	.loc 1 130 0
-	cpi r24,lo8(2)
-	brlo .L7
-	.loc 1 131 0
-	sts touch_cnt,r30
-	.loc 1 132 0
-	lds r24,state
-	ori r24,lo8(8)
-	sts state,r24
-	rjmp .L7
-.L6:
-	.loc 1 135 0
-	sts touch_cnt,__zero_reg__
-.L7:
-	.loc 1 139 0
-	in r24,42-0
-	ori r24,lo8(32)
-	out 42-0,r24
-	.loc 1 140 0
-	cbi 2-0,1
-	.loc 1 141 0
-	sbi 1-0,1
-.L4:
-	.loc 1 145 0
-	lds r24,state
-	ldi r25,lo8(0)
-	sbrc r24,1
-	rjmp .L8
-	.loc 1 110 0 discriminator 1
-	andi r24,lo8(12)
-	andi r25,hi8(12)
-	.loc 1 145 0 discriminator 1
-	cpi r24,12
-	cpc r25,__zero_reg__
-	brne .L9
-.L8:
-	.loc 1 147 0
-	sbi 1-0,0
-	.loc 1 148 0
-	cbi 3-0,0
-	rjmp .L12
-.L9:
-	.loc 1 151 0
-	cbi 1-0,0
-	.loc 1 152 0
-	sbi 3-0,0
-	rjmp .L12
+.L3:
+	rjmp .L3
 	.cfi_endproc
 .LFE6:
 	.size	main, .-main
@@ -276,7 +110,69 @@ main:
 	.type	__vector_1, @function
 __vector_1:
 .LFB8:
-	.loc 1 207 0
+	.loc 1 212 0
+	.cfi_startproc
+	push r17
+.LCFI0:
+	.cfi_def_cfa_offset 3
+	.cfi_offset 17, -2
+	push r16
+.LCFI1:
+	.cfi_def_cfa_offset 4
+	.cfi_offset 16, -3
+	in r16,__SREG__
+	push r16
+	ldi __zero_reg__,lo8(0)
+	push r24
+.LCFI2:
+	.cfi_def_cfa_offset 5
+	.cfi_offset 24, -4
+	push r25
+.LCFI3:
+	.cfi_def_cfa_offset 6
+	.cfi_offset 25, -5
+/* prologue: Signal */
+/* frame size = 0 */
+/* stack size = 5 */
+.L__stack_usage = 5
+	.loc 1 215 0
+/* #APP */
+ ;  215 "main.c" 1
+	sei
+ ;  0 "" 2
+	.loc 1 218 0
+/* #NOAPP */
+	in r24,40-0
+	in r25,40+1-0
+	subi r24,lo8(-(385))
+	sbci r25,hi8(-(385))
+	out 36+1-0,r25
+	out 36-0,r24
+	.loc 1 220 0
+	sbi 20-0,0
+	.loc 1 221 0
+	cbi 19-0,0
+	.loc 1 222 0
+	in r24,43-0
+	ori r24,lo8(4)
+	out 43-0,r24
+/* epilogue start */
+	.loc 1 224 0
+	pop r25
+	pop r24
+	pop r16
+	out __SREG__,r16
+	pop r16
+	pop r17
+	reti
+	.cfi_endproc
+.LFE8:
+	.size	__vector_1, .-__vector_1
+.global	__vector_6
+	.type	__vector_6, @function
+__vector_6:
+.LFB9:
+	.loc 1 230 0
 	.cfi_startproc
 	push r17
 .LCFI4:
@@ -301,187 +197,91 @@ __vector_1:
 /* frame size = 0 */
 /* stack size = 5 */
 .L__stack_usage = 5
-	.loc 1 210 0
+	.loc 1 233 0
 /* #APP */
- ;  210 "main.c" 1
+ ;  233 "main.c" 1
 	sei
  ;  0 "" 2
-	.loc 1 213 0
+	.loc 1 236 0
 /* #NOAPP */
 	in r24,40-0
 	in r25,40+1-0
-	subi r24,lo8(-(403))
-	sbci r25,hi8(-(403))
-	out 38+1-0,r25
-	out 38-0,r24
-	.loc 1 215 0
-	cbi 19-0,0
-	.loc 1 216 0
-	in r24,43-0
-	ori r24,lo8(4)
-	out 43-0,r24
-/* epilogue start */
-	.loc 1 218 0
-	pop r25
-	pop r24
-	pop r16
-	out __SREG__,r16
-	pop r16
-	pop r17
-	reti
-	.cfi_endproc
-.LFE8:
-	.size	__vector_1, .-__vector_1
-.global	__vector_6
-	.type	__vector_6, @function
-__vector_6:
-.LFB9:
-	.loc 1 224 0
-	.cfi_startproc
-	push r17
-.LCFI8:
-	.cfi_def_cfa_offset 3
-	.cfi_offset 17, -2
-	push r16
-.LCFI9:
-	.cfi_def_cfa_offset 4
-	.cfi_offset 16, -3
-	in r16,__SREG__
-	push r16
-	ldi __zero_reg__,lo8(0)
-	push r22
-.LCFI10:
-	.cfi_def_cfa_offset 5
-	.cfi_offset 22, -4
-	push r24
-.LCFI11:
-	.cfi_def_cfa_offset 6
-	.cfi_offset 24, -5
-	push r25
-.LCFI12:
-	.cfi_def_cfa_offset 7
-	.cfi_offset 25, -6
-/* prologue: Signal */
-/* frame size = 0 */
-/* stack size = 6 */
-.L__stack_usage = 6
-	.loc 1 227 0
-/* #APP */
- ;  227 "main.c" 1
-	sei
- ;  0 "" 2
-	.loc 1 230 0
-/* #NOAPP */
-	in r24,38-0
-	in r25,38+1-0
-	subi r24,lo8(-(194))
-	sbci r25,hi8(-(194))
-	out 38+1-0,r25
-	out 38-0,r24
-	.loc 1 233 0
+	subi r24,lo8(-(810))
+	sbci r25,hi8(-(810))
+	out 36+1-0,r25
+	out 36-0,r24
+	.loc 1 239 0
 	lds r24,tx_cnt
 	tst r24
-	brne .L15
-	.loc 1 235 0
-	cbi 2-0,3
-	.loc 1 237 0
+	brne .L6
+	.loc 1 241 0
+	cbi 2-0,0
+	.loc 1 243 0
 	ldi r24,lo8(1)
-	rjmp .L25
-.L15:
-	.loc 1 238 0
+	rjmp .L14
+.L6:
+	.loc 1 244 0
 	cpi r24,lo8(9)
-	brsh .L17
+	brsh .L8
 	lds r24,cur_rx
-	.loc 1 240 0
+	.loc 1 246 0
 	sbis 0-0,2
-	rjmp .L18
-	.loc 1 240 0 is_stmt 0 discriminator 1
+	rjmp .L9
+	.loc 1 246 0 is_stmt 0 discriminator 1
 	ori r24,lo8(1)
-	rjmp .L24
-.L18:
-	.loc 1 240 0 discriminator 2
+	rjmp .L13
+.L9:
+	.loc 1 246 0 discriminator 2
 	andi r24,lo8(-2)
-.L24:
+.L13:
 	sts cur_rx,r24
-	.loc 1 241 0 is_stmt 1 discriminator 2
+	.loc 1 247 0 is_stmt 1 discriminator 2
 	lds r24,cur_rx
 	lsl r24
 	sts cur_rx,r24
-	.loc 1 243 0 discriminator 2
+	.loc 1 249 0 discriminator 2
 	lds r24,cur_tx
 	sbrs r24,0
-	rjmp .L20
-	.loc 1 243 0 is_stmt 0 discriminator 1
-	sbi 2-0,3
-	rjmp .L21
-.L20:
-	.loc 1 243 0 discriminator 2
-	cbi 2-0,3
-.L21:
-	.loc 1 244 0 is_stmt 1
+	rjmp .L11
+	.loc 1 249 0 is_stmt 0 discriminator 1
+	sbi 2-0,0
+	rjmp .L12
+.L11:
+	.loc 1 249 0 discriminator 2
+	cbi 2-0,0
+.L12:
+	.loc 1 250 0 is_stmt 1
 	lsr r24
 	sts cur_tx,r24
-	.loc 1 246 0
+	.loc 1 252 0
 	lds r24,tx_cnt
 	subi r24,lo8(-(1))
-.L25:
+.L14:
 	sts tx_cnt,r24
-	rjmp .L14
-.L17:
-	.loc 1 249 0
-	sbi 2-0,3
-	.loc 1 251 0
+	rjmp .L5
+.L8:
+	.loc 1 255 0
+	sbi 2-0,0
+	.loc 1 271 0
+	lds r24,cur_rx
+	sts cur_tx,r24
+	.loc 1 275 0
+	sts cur_rx,__zero_reg__
+	.loc 1 276 0
+	sts tx_cnt,__zero_reg__
+	.loc 1 279 0
 	in r24,43-0
 	andi r24,lo8(-5)
 	out 43-0,r24
-	.loc 1 253 0
-	sts tx_cnt,__zero_reg__
-	.loc 1 256 0
-	lds r24,cur_rx
-	sbrs r24,0
-	rjmp .L22
-	.loc 1 256 0 is_stmt 0 discriminator 1
-	lds r25,state
-	sbrs r25,0
-	rjmp .L22
-	.loc 1 259 0 is_stmt 1
-	andi r25,lo8(25)
-	mov r22,r24
-	andi r22,lo8(-26)
-	or r25,r22
-	.loc 1 260 0
-	mov r22,r25
-	andi r22,lo8(8)
-	ori r24,lo8(1)
-	or r22,r24
-	sts cur_tx,r22
-	.loc 1 262 0
-	andi r25,lo8(-10)
-	sts state,r25
-	.loc 1 264 0
-	ori r25,lo8(31)
-	out 39-0,r25
-	.loc 1 265 0
-	ldi r24,lo8(-1)
-	out 38-0,r24
-	rjmp .L23
-.L22:
-	.loc 1 269 0
-	sts cur_tx,r24
-.L23:
-	.loc 1 273 0
-	sts cur_rx,__zero_reg__
-	.loc 1 274 0
-	ldi r24,lo8(1)
-	out 20-0,r24
-	.loc 1 275 0
-	out 19-0,r24
-.L14:
+	.loc 1 280 0
+	sbi 20-0,0
+	.loc 1 281 0
+	sbi 19-0,0
+.L5:
 /* epilogue start */
-	.loc 1 278 0
+	.loc 1 284 0
 	pop r25
 	pop r24
-	pop r22
 	pop r16
 	out __SREG__,r16
 	pop r16
@@ -494,27 +294,27 @@ __vector_6:
 	.type	__vector_4, @function
 __vector_4:
 .LFB10:
-	.loc 1 292 0
+	.loc 1 298 0
 	.cfi_startproc
 /* prologue: naked */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 296 0
+	.loc 1 302 0
 /* #APP */
- ;  296 "main.c" 1
-	cbi 2,0
+ ;  302 "main.c" 1
+	cbi 2,3
  ;  0 "" 2
-	.loc 1 297 0
- ;  297 "main.c" 1
+	.loc 1 303 0
+ ;  303 "main.c" 1
 	cbi 1,1
  ;  0 "" 2
-	.loc 1 298 0
- ;  298 "main.c" 1
+	.loc 1 304 0
+ ;  304 "main.c" 1
 	reti
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 299 0
+	.loc 1 305 0
 /* #NOAPP */
 	.cfi_endproc
 .LFE10:
@@ -523,23 +323,23 @@ __vector_4:
 	.type	__vector_5, @function
 __vector_5:
 .LFB11:
-	.loc 1 305 0
+	.loc 1 311 0
 	.cfi_startproc
 /* prologue: naked */
 /* frame size = 0 */
 /* stack size = 0 */
 .L__stack_usage = 0
-	.loc 1 309 0
+	.loc 1 314 0
 /* #APP */
- ;  309 "main.c" 1
-	sbi 2,0
+ ;  314 "main.c" 1
+	sbi 2,3
  ;  0 "" 2
-	.loc 1 310 0
- ;  310 "main.c" 1
+	.loc 1 315 0
+ ;  315 "main.c" 1
 	reti
  ;  0 "" 2
 /* epilogue start */
-	.loc 1 311 0
+	.loc 1 316 0
 /* #NOAPP */
 	.cfi_endproc
 .LFE11:
@@ -559,15 +359,15 @@ __vector_5:
 	.file 2 "/opt/cross/avr/bin/../lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
 	.section	.debug_info,"",@progbits
 .Ldebug_info0:
-	.long	0x29e
+	.long	0x279
 	.word	0x2
 	.long	.Ldebug_abbrev0
 	.byte	0x4
 	.uleb128 0x1
-	.long	.LASF44
+	.long	.LASF43
 	.byte	0x1
+	.long	.LASF44
 	.long	.LASF45
-	.long	.LASF46
 	.long	0
 	.long	0
 	.long	.Ldebug_ranges0+0
@@ -602,90 +402,85 @@ __vector_5:
 	.byte	0x4
 	.byte	0x5
 	.long	.LASF5
-	.uleb128 0x3
-	.long	.LASF6
-	.byte	0x2
-	.byte	0x7e
-	.long	0x6d
 	.uleb128 0x2
 	.byte	0x4
 	.byte	0x7
-	.long	.LASF7
+	.long	.LASF6
 	.uleb128 0x2
 	.byte	0x8
 	.byte	0x5
-	.long	.LASF8
+	.long	.LASF7
 	.uleb128 0x2
 	.byte	0x8
 	.byte	0x7
+	.long	.LASF8
+	.uleb128 0x5
+	.long	.LASF17
+	.byte	0x1
+	.byte	0x1
+	.byte	0xf
+	.long	0xb4
+	.uleb128 0x6
 	.long	.LASF9
+	.sleb128 0
+	.uleb128 0x6
+	.long	.LASF10
+	.sleb128 1
+	.uleb128 0x6
+	.long	.LASF11
+	.sleb128 2
+	.uleb128 0x6
+	.long	.LASF12
+	.sleb128 3
+	.uleb128 0x6
+	.long	.LASF13
+	.sleb128 4
+	.uleb128 0x6
+	.long	.LASF14
+	.sleb128 5
+	.uleb128 0x6
+	.long	.LASF15
+	.sleb128 6
+	.uleb128 0x6
+	.long	.LASF16
+	.sleb128 7
+	.byte	0
 	.uleb128 0x5
 	.long	.LASF18
 	.byte	0x1
 	.byte	0x1
-	.byte	0xf
-	.long	0xbf
-	.uleb128 0x6
-	.long	.LASF10
-	.sleb128 0
-	.uleb128 0x6
-	.long	.LASF11
-	.sleb128 1
-	.uleb128 0x6
-	.long	.LASF12
-	.sleb128 2
-	.uleb128 0x6
-	.long	.LASF13
-	.sleb128 3
-	.uleb128 0x6
-	.long	.LASF14
-	.sleb128 4
-	.uleb128 0x6
-	.long	.LASF15
-	.sleb128 5
-	.uleb128 0x6
-	.long	.LASF16
-	.sleb128 6
-	.uleb128 0x6
-	.long	.LASF17
-	.sleb128 7
-	.byte	0
-	.uleb128 0x5
-	.long	.LASF19
-	.byte	0x1
-	.byte	0x1
 	.byte	0x1c
-	.long	0xfc
+	.long	0xf1
+	.uleb128 0x6
+	.long	.LASF19
+	.sleb128 0
 	.uleb128 0x6
 	.long	.LASF20
-	.sleb128 0
-	.uleb128 0x6
-	.long	.LASF21
 	.sleb128 1
 	.uleb128 0x6
-	.long	.LASF22
+	.long	.LASF21
 	.sleb128 2
 	.uleb128 0x6
-	.long	.LASF23
+	.long	.LASF22
 	.sleb128 3
 	.uleb128 0x6
-	.long	.LASF24
+	.long	.LASF23
 	.sleb128 4
 	.uleb128 0x6
-	.long	.LASF25
+	.long	.LASF24
 	.sleb128 5
 	.uleb128 0x6
-	.long	.LASF26
+	.long	.LASF25
 	.sleb128 6
 	.uleb128 0x6
-	.long	.LASF27
+	.long	.LASF26
 	.sleb128 7
 	.byte	0
 	.uleb128 0x7
 	.byte	0x1
-	.long	.LASF28
+	.long	.LASF27
 	.byte	0x1
-	.byte	0xa3
+	.byte	0x9f
 	.byte	0x1
 	.long	.LFB7
 	.long	.LFE7
@@ -695,37 +490,40 @@ __vector_5:
 	.sleb128 2
 	.uleb128 0x8
 	.byte	0x1
-	.long	.LASF47
+	.long	.LASF46
 	.byte	0x1
-	.byte	0x6e
+	.byte	0x6a
 	.byte	0x1
 	.long	0x42
 	.long	.LFB6
 	.long	.LFE6
+	.byte	0x3
+	.byte	0x92
+	.uleb128 0x20
+	.sleb128 2
+	.uleb128 0x9
+	.byte	0x1
+	.long	.LASF28
+	.byte	0x1
+	.byte	0xd4
+	.byte	0x1
+	.long	.LFB8
+	.long	.LFE8
 	.long	.LLST0
 	.uleb128 0x9
 	.byte	0x1
 	.long	.LASF29
 	.byte	0x1
-	.byte	0xcf
-	.byte	0x1
-	.long	.LFB8
-	.long	.LFE8
-	.long	.LLST1
-	.uleb128 0x9
-	.byte	0x1
-	.long	.LASF30
-	.byte	0x1
-	.byte	0xe0
+	.byte	0xe6
 	.byte	0x1
 	.long	.LFB9
 	.long	.LFE9
-	.long	.LLST2
+	.long	.LLST1
 	.uleb128 0xa
 	.byte	0x1
-	.long	.LASF31
+	.long	.LASF30
 	.byte	0x1
-	.word	0x124
+	.word	0x12a
 	.byte	0x1
 	.long	.LFB10
 	.long	.LFE10
@@ -735,9 +533,9 @@ __vector_5:
 	.sleb128 2
 	.uleb128 0xa
 	.byte	0x1
-	.long	.LASF32
+	.long	.LASF31
 	.byte	0x1
-	.word	0x131
+	.word	0x137
 	.byte	0x1
 	.long	.LFB11
 	.long	.LFE11
@@ -746,148 +544,134 @@ __vector_5:
 	.uleb128 0x20
 	.sleb128 2
 	.uleb128 0xb
+	.long	.LASF32
+	.byte	0x1
+	.byte	0x60
+	.long	0x30
+	.byte	0x1
+	.byte	0x1
+	.uleb128 0xb
 	.long	.LASF33
 	.byte	0x1
-	.byte	0x64
+	.byte	0x60
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xb
 	.long	.LASF34
 	.byte	0x1
-	.byte	0x64
+	.byte	0x60
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xb
 	.long	.LASF35
 	.byte	0x1
-	.byte	0x64
+	.byte	0x61
 	.long	0x30
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xb
 	.long	.LASF36
 	.byte	0x1
-	.byte	0x65
-	.long	0x30
-	.byte	0x1
-	.byte	0x1
-	.uleb128 0xb
-	.long	.LASF37
-	.byte	0x1
-	.byte	0x68
-	.long	0x30
-	.byte	0x1
-	.byte	0x1
-	.uleb128 0xb
-	.long	.LASF38
-	.byte	0x1
-	.byte	0x69
-	.long	0x49
-	.byte	0x1
-	.byte	0x1
-	.uleb128 0xb
-	.long	.LASF39
-	.byte	0x1
-	.byte	0x6a
+	.byte	0x66
 	.long	0x49
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0xc
-	.long	.LASF40
+	.long	.LASF37
 	.byte	0x1
-	.byte	0x62
+	.byte	0x5e
 	.long	0x49
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	cur_meas
 	.uleb128 0xc
-	.long	.LASF41
+	.long	.LASF38
 	.byte	0x1
-	.byte	0x63
+	.byte	0x5f
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	cur_conf
 	.uleb128 0xc
-	.long	.LASF42
+	.long	.LASF39
 	.byte	0x1
-	.byte	0x63
+	.byte	0x5f
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	cur_touch
 	.uleb128 0xc
-	.long	.LASF33
+	.long	.LASF32
 	.byte	0x1
-	.byte	0x64
+	.byte	0x60
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	cur_rx
 	.uleb128 0xc
-	.long	.LASF34
+	.long	.LASF33
 	.byte	0x1
-	.byte	0x64
+	.byte	0x60
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	cur_tx
 	.uleb128 0xc
-	.long	.LASF35
+	.long	.LASF34
 	.byte	0x1
-	.byte	0x64
+	.byte	0x60
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	tx_cnt
 	.uleb128 0xc
-	.long	.LASF36
+	.long	.LASF35
 	.byte	0x1
-	.byte	0x65
+	.byte	0x61
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	state
 	.uleb128 0xc
-	.long	.LASF43
+	.long	.LASF40
 	.byte	0x1
-	.byte	0x66
+	.byte	0x62
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	led_val
 	.uleb128 0xc
-	.long	.LASF37
+	.long	.LASF41
 	.byte	0x1
-	.byte	0x68
+	.byte	0x64
 	.long	0x30
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	touch_cnt
 	.uleb128 0xc
-	.long	.LASF38
+	.long	.LASF42
 	.byte	0x1
-	.byte	0x69
+	.byte	0x65
 	.long	0x49
 	.byte	0x1
 	.byte	0x5
 	.byte	0x3
 	.long	touch_new
 	.uleb128 0xc
-	.long	.LASF39
+	.long	.LASF36
 	.byte	0x1
-	.byte	0x6a
+	.byte	0x66
 	.long	0x49
 	.byte	0x1
 	.byte	0x5
@@ -1017,7 +801,7 @@ __vector_5:
 	.uleb128 0x12
 	.uleb128 0x1
 	.uleb128 0x40
-	.uleb128 0x6
+	.uleb128 0xa
 	.byte	0
 	.byte	0
 	.uleb128 0x9
@@ -1100,63 +884,31 @@ __vector_5:
 	.section	.debug_loc,"",@progbits
 .Ldebug_loc0:
 .LLST0:
-	.long	.LFB6
-	.long	.LCFI0
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 2
-	.long	.LCFI0
-	.long	.LCFI1
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 3
-	.long	.LCFI1
-	.long	.LCFI2
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 4
-	.long	.LCFI2
-	.long	.LCFI3
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 8
-	.long	.LCFI3
-	.long	.LFE6
-	.word	0x2
-	.byte	0x8c
-	.sleb128 8
-	.long	0
-	.long	0
-.LLST1:
 	.long	.LFB8
-	.long	.LCFI4
+	.long	.LCFI0
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 2
-	.long	.LCFI4
-	.long	.LCFI5
+	.long	.LCFI0
+	.long	.LCFI1
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 3
-	.long	.LCFI5
-	.long	.LCFI6
+	.long	.LCFI1
+	.long	.LCFI2
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 4
-	.long	.LCFI6
-	.long	.LCFI7
+	.long	.LCFI2
+	.long	.LCFI3
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 5
-	.long	.LCFI7
+	.long	.LCFI3
 	.long	.LFE8
 	.word	0x3
 	.byte	0x92
@@ -1164,43 +916,37 @@ __vector_5:
 	.sleb128 6
 	.long	0
 	.long	0
-.LLST2:
+.LLST1:
 	.long	.LFB9
-	.long	.LCFI8
+	.long	.LCFI4
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 2
-	.long	.LCFI8
-	.long	.LCFI9
+	.long	.LCFI4
+	.long	.LCFI5
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 3
-	.long	.LCFI9
-	.long	.LCFI10
+	.long	.LCFI5
+	.long	.LCFI6
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 4
-	.long	.LCFI10
-	.long	.LCFI11
+	.long	.LCFI6
+	.long	.LCFI7
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
 	.sleb128 5
-	.long	.LCFI11
-	.long	.LCFI12
-	.word	0x3
-	.byte	0x92
-	.uleb128 0x20
-	.sleb128 6
-	.long	.LCFI12
+	.long	.LCFI7
 	.long	.LFE9
 	.word	0x3
 	.byte	0x92
 	.uleb128 0x20
-	.sleb128 7
+	.sleb128 6
 	.long	0
 	.long	0
 	.section	.debug_aranges,"",@progbits
@@ -1228,99 +974,97 @@ __vector_5:
 	.section	.debug_line,"",@progbits
 .Ldebug_line0:
 	.section	.debug_str,"MS",@progbits,1
-.LASF23:
-	.string	"MSG_IS_TOUCHED"
-.LASF36:
-	.string	"state"
-.LASF37:
-	.string	"touch_cnt"
-.LASF21:
-	.string	"MSG_LED_EN"
 .LASF22:
+	.string	"MSG_IS_TOUCHED"
+.LASF35:
+	.string	"state"
+.LASF41:
+	.string	"touch_cnt"
+.LASF20:
+	.string	"MSG_LED_EN"
+.LASF21:
 	.string	"MSG_LED_DIRECT"
-.LASF43:
+.LASF40:
 	.string	"led_val"
-.LASF28:
-	.string	"init"
-.LASF33:
-	.string	"cur_rx"
-.LASF34:
-	.string	"cur_tx"
-.LASF25:
-	.string	"MSG_LED0"
-.LASF46:
-	.string	"/home/tomv/workspace/attiny10_touch/"
 .LASF27:
+	.string	"init"
+.LASF32:
+	.string	"cur_rx"
+.LASF33:
+	.string	"cur_tx"
+.LASF24:
+	.string	"MSG_LED0"
+.LASF45:
+	.string	"/home/tomv/workspace/attiny10_touch/"
+.LASF26:
 	.string	"MSG_LED2"
 .LASF1:
 	.string	"unsigned char"
-.LASF7:
+.LASF6:
 	.string	"long unsigned int"
-.LASF11:
+.LASF10:
 	.string	"LED_EN"
-.LASF31:
+.LASF30:
 	.string	"__vector_4"
-.LASF32:
+.LASF31:
 	.string	"__vector_5"
-.LASF44:
+.LASF43:
 	.string	"GNU C 4.6.2"
-.LASF18:
+.LASF17:
 	.string	"state_t"
-.LASF20:
+.LASF19:
 	.string	"MSG_SLOT_TAKEN"
-.LASF24:
+.LASF23:
 	.string	"MSG_RESERVED"
-.LASF13:
-	.string	"TOUCHED"
-.LASF14:
-	.string	"RESERVED"
-.LASF47:
-	.string	"main"
 .LASF12:
+	.string	"TOUCHED"
+.LASF13:
+	.string	"RESERVED"
+.LASF46:
+	.string	"main"
+.LASF11:
 	.string	"SET_LED_DIRECT"
-.LASF35:
+.LASF34:
 	.string	"tx_cnt"
-.LASF39:
+.LASF36:
 	.string	"touch_avg"
 .LASF4:
 	.string	"unsigned int"
-.LASF40:
+.LASF37:
 	.string	"cur_meas"
-.LASF9:
+.LASF8:
 	.string	"long long unsigned int"
 .LASF2:
 	.string	"uint8_t"
-.LASF42:
+.LASF39:
 	.string	"cur_touch"
-.LASF19:
+.LASF18:
 	.string	"msg_t"
-.LASF41:
+.LASF38:
 	.string	"cur_conf"
-.LASF8:
+.LASF7:
 	.string	"long long int"
-.LASF45:
+.LASF44:
 	.string	"main.c"
-.LASF15:
+.LASF14:
 	.string	"LED0"
-.LASF16:
+.LASF15:
 	.string	"LED1"
-.LASF17:
+.LASF16:
 	.string	"LED2"
-.LASF29:
+.LASF28:
 	.string	"__vector_1"
 .LASF3:
 	.string	"uint16_t"
-.LASF10:
+.LASF9:
 	.string	"TAKEN_PASSED"
-.LASF26:
+.LASF25:
 	.string	"MSG_LED1"
-.LASF30:
+.LASF29:
 	.string	"__vector_6"
-.LASF6:
-	.string	"uint32_t"
 .LASF5:
 	.string	"long int"
-.LASF38:
+.LASF42:
 	.string	"touch_new"
 .LASF0:
 	.string	"signed char"

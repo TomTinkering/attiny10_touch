@@ -7,6 +7,7 @@ F_CPU  := 8000000
 
 AVR_PATH = /opt/cross/avr
 
+
 #makefile tested on avr8-gnu-toolchain-3.4.1.798-linux.any.x86_64.tar.gz
 CC      = $(AVR_PATH)/bin/avr-gcc
 CXX     = $(AVR_PATH)/bin/avr-c++
@@ -76,7 +77,7 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
 
 AVRDUDE = avrdude -c $(PROG) -p $(MCU)
-AVRDUDE_WRITE_FLASH = -U flash:w:$(BIN_OUTPUT_DIR)/$(TARGET).hex
+AVRDUDE_WRITE_FLASH = -U flash:w:$(BIN_OUTPUT_DIR)/$(PROJECT).hex
 
 #########################################################################
 
@@ -104,6 +105,11 @@ assemble : $(notdir $(ASM_FILES))
 .PHONY: check
 check:
 	$(AVRDUDE)	
+	
+.PHONY: flash
+flash:
+	$(AVRDUDE) $(AVRDUDE_WRITE_FLASH)	
+	
 	
 .PHONY: size
 size:

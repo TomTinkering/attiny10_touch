@@ -39,25 +39,21 @@ typedef enum msg_t {
 } msg_t;
 
 
-#define DEFAULT_CONFIGURATION (0b10101010) //TODO: change to proper setting
+#define DEFAULT_CONFIGURATION ( 0x00 )
 #define WRITE_PROTECT_DISABLE_SIG (0xD8)
 
 #define TOUCH_TIMEOUT ((uint16_t)40000) //roughly 4ms @ 8MHz
 #define TOUCH_PIN (PIN1) //TODO: set proper pin (change interrupt)
-#define LED_PIN   (PIN0)
+#define LED_PIN   (PIN3)
 
-//the number of instructions before INT0 is executed
-#define ISR_OFFSET     (4+10) //4 till call, 10 till instruction
 
 //next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
-#define UART_BIT_TIME       ((uint16_t)417) //number of clock ticks @8MHz per bit
-
-#define UART_OCR_OFFSET     (4+10) //4 till call, 10 till instruction
-#define UART_OCR_INC        ((UART_BIT_TIME / 2)-UART_OCR_OFFSET)
-#define UART_HALF_OCR_INC   (UART_BIT_TIME-UART_OCR_OFFSET)
-
+#define UART_BIT_TIME       ((uint16_t)810) //number of clock ticks @8MHz per bit
+#define UART_INC_OFFSET     ((uint16_t)(4+16)) //number of instructions till OCR0B is updated
+#define UART_HALF_OCR_INC   ((uint16_t)(UART_BIT_TIME/2)-UART_INC_OFFSET) //half bit increment
+#define UART_OCR_INC        ((uint16_t)UART_BIT_TIME) //single bit increment
 #define UART_RX_PIN    (PIN2)
-#define UART_TX_PIN    (PIN3)
+#define UART_TX_PIN    (PIN0)
 #define UART_START     (0)
 #define UART_STOP      (9)
 
@@ -117,40 +113,40 @@ int main(void) {
 
   while(TRUE){
 
-      //check for touch timeout / process measurement
-      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
-
-          //get input capture time, or limit if no capture occured
-          touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
-          //determine new running average
-          touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
-          //compare new measurement to running average
-          if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
-              touch_cnt++;
-              if(touch_cnt >= TOUCH_VALID_CNT){
-                  touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
-                  SET(state,TOUCHED);
-              }
-          } else {
-              touch_cnt = 0;
-          }
-
-          //start new measurement (clear ICF0, set pin to LOW)
-          SET(TIFR0,ICF0);
-          CLR(PORTB,TOUCH_PIN);
-          SET(DDRB,TOUCH_PIN);
-      }
-
-      //enable or disable led based on system state
-      if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
-          //set led pin to output
-          SET(DDRB,LED_PIN);
-          CLR(PUEB,LED_PIN);
-      } else { //turn off led
-          //just setting pin to input is enough
-          CLR(DDRB,LED_PIN);
-          SET(PUEB,LED_PIN);
-      }
+//      //check for touch timeout / process measurement
+//      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
+//
+//          //get input capture time, or limit if no capture occured
+//          touch_new=(IS_SET(TIFR0,ICF0)) ? ICR0 : TOUCH_TIMEOUT;
+//          //determine new running average
+//          touch_avg = TOUCH_FILTER_LP(touch_avg,touch_new);
+//          //compare new measurement to running average
+//          if(touch_new > (touch_avg + TOUCH_THRESHOLD)){
+//              touch_cnt++;
+//              if(touch_cnt >= TOUCH_VALID_CNT){
+//                  touch_cnt = TOUCH_VALID_CNT; //need for prolonged touch > 1s (avoid overflow)
+//                  SET(state,TOUCHED);
+//              }
+//          } else {
+//              touch_cnt = 0;
+//          }
+//
+//          //start new measurement (clear ICF0, set pin to LOW)
+//          SET(TIFR0,ICF0);
+//          CLR(PORTB,TOUCH_PIN);
+//          SET(DDRB,TOUCH_PIN);
+//      }
+//
+//      //enable or disable led based on system state
+//      if( IS_SET(state,LED_EN) || (IS_SET(state,SET_LED_DIRECT) && IS_SET(state,TOUCHED)) ){
+//          //set led pin to output
+//          SET(DDRB,LED_PIN);
+//          CLR(PUEB,LED_PIN);
+//      } else { //turn off led
+//          //just setting pin to input is enough
+//          CLR(DDRB,LED_PIN);
+//          SET(PUEB,LED_PIN);
+//      }
 
 
   }
@@ -174,6 +170,11 @@ void init(void){
     DDRB  = B(LED_PIN) | B(TOUCH_PIN) | B(UART_TX_PIN);
     PUEB  = B(UART_RX_PIN);
 
+    //setup external interrupt for falling edge
+    SET(EICRA,ISC01);
+    SET(EIMSK,INT0);
+    SET(EIFR,INTF0);
+
     //set timer normal mode (0xFFFF top is convenient for UART)
     //disconnect output compare functionality
     //enable input capture noise filter, trigger on rising edge ( 0->1)
@@ -186,12 +187,16 @@ void init(void){
 
     //TODO: RSTDISBL bit ...fuse
     touch_avg = TOUCH_AVG_INIT;
-
     //since all interrupts are disabled, cur_rx will be read as first config
     cur_rx = DEFAULT_CONFIGURATION;
+    cur_tx = 'A';
+    tx_cnt = 0x00;
+
     //enable ovf interrupt, start the timer and let the magic begin
-    SET(TIMSK0,TOIE0);
+    //SET(TIMSK0,OCIE0B);
     SET(TCCR0B,CS00);
+    //OCR0A  = 0xF000;
+
     sei();
 
 }
@@ -210,8 +215,9 @@ ISR(INT0_vect){
     sei();
 
     //set first sample time
-    OCR0A = TCNT0+UART_HALF_OCR_INC;
+    OCR0B = TCNT0+UART_HALF_OCR_INC;
     //disable external interrupt, enable COMPA interrupt
+    SET(EIFR,INTF0);
     CLR(EIMSK,INT0);
     SET(TIMSK0,OCIE0B);
 
@@ -227,7 +233,7 @@ ISR(TIM0_COMPB_vect){
     sei();
 
     //update OCR0A (always to reduce jitter)
-    OCR0A += UART_OCR_INC;
+    OCR0B = TCNT0 + UART_OCR_INC;
 
     //update RX and TX
     if(tx_cnt == UART_START){
@@ -247,13 +253,9 @@ ISR(TIM0_COMPB_vect){
     } else {
         //don't sample, set TX high
         SET(PORTB,UART_TX_PIN);
-        //disable this interrupt until next RX byte
-        CLR(TIMSK0,OCIE0B);
-        //we are done, set tx_counter to 0
-        tx_cnt = 0x00;
-
+        //OCR0B += 40*UART_OCR_INC;
         //cur_rx done, check if message is for us
-        if( IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
+        if( 0 ) { //IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
 
             //if for us, store settings, refresh button state
             state = (cur_rx & ~CONF_BIT_MASK) | (state & CONF_BIT_MASK);
@@ -269,17 +271,21 @@ ISR(TIM0_COMPB_vect){
             cur_tx = cur_rx;
         }
 
-        //go to uart idle state (enable EXTI)
+        //we are done, set tx_counter to 0
         cur_rx = 0x00;
-        EIFR  = (1<<INTF0);
-        EIMSK = (1 << INT0);
+        tx_cnt = 0x00;
+        //disable this interrupt until next RX byte
+        //go to uart idle state (enable EXTI)
+        CLR(TIMSK0,OCIE0B);
+        SET(EIFR,INTF0);
+        SET(EIMSK,INT0);
     }
 
 }
 
 
 
-#if LED_PIN != PIN0
+#if LED_PIN != PIN3
 #  error "change interrupt routines when changing LED_PIN definition"
 #endif
 #if TOUCH_PIN != PIN1
@@ -293,7 +299,7 @@ ISR(TIM0_OVF_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
     //PORTB &= ~(1 << LED_PIN);
     //DDRB &= ~(1 << TOUCH_PIN);
-    asm("cbi 2,0");
+    asm("cbi 2,3");
     asm("cbi 1,1");
     asm("reti");
 }
@@ -304,9 +310,8 @@ ISR(TIM0_OVF_vect, ISR_NAKED){
 //OC0A, OC0B and ICR, or TOP value is too low (0x03FF max).
 ISR(TIM0_COMPA_vect, ISR_NAKED){
     //set cap_touch pin to input pin to input
-    //PORTB &= ~(1 << LED_PIN);
-    //DDRB &= ~(1 << TOUCH_PIN);
-    asm("sbi 2,0");
+    //PORTB |= (1 << LED_PIN);
+    asm("sbi 2,3");
     asm("reti");
 }
 
