@@ -18,7 +18,7 @@ typedef enum state_t {
     LED_EN          = 1,
     SET_LED_DIRECT  = 2,
     TOUCHED         = 3,
-    RESERVED        = 4,
+    MEAS_DONE       = 4,
     LED0            = 5,
     LED1            = 6,
     LED2            = 7
@@ -47,15 +47,20 @@ typedef enum msg_t {
 #define LED_PIN   (PIN3)
 
 
+#define SYS_CLOCK ((uint32_t)8000000)
+#define BAUD_RATE ((uint32_t)19200)
+
+
+
 //next sample instant 1/19200 = 52us =~ 417 tim-ticks @ 8MHz
-#define UART_BIT_TIME       ((uint16_t)810) //number of clock ticks @8MHz per bit
+#define UART_BIT_TIME       ((uint16_t)(SYS_CLOCK / BAUD_RATE)) //number of clock ticks @8MHz per bit
 #define UART_INC_OFFSET     ((uint16_t)(4+16)) //number of instructions till OCR0B is updated
-#define UART_HALF_OCR_INC   ((uint16_t)(UART_BIT_TIME/2)-UART_INC_OFFSET) //half bit increment
+#define UART_HALF_OCR_INC   ((uint16_t)(UART_BIT_TIME/2)) //half bit increment
 #define UART_OCR_INC        ((uint16_t)UART_BIT_TIME) //single bit increment
 #define UART_RX_PIN    (PIN2)
 #define UART_TX_PIN    (PIN0)
-#define UART_START     (0)
-#define UART_STOP      (9)
+#define UART_START     (1)
+#define UART_STOP      (10)
 
 //protocol definitions
 #define SLOT_TAKEN_BIT (7)
@@ -112,6 +117,20 @@ int main(void) {
   //this allows higher UART speeds
 
   while(TRUE){
+
+      if( (TCNT0 >= TOUCH_TIMEOUT) && !IS_SET(state,MEAS_DONE)) {
+          SET(DDRB,TOUCH_PIN);
+          SET(state,MEAS_DONE);
+          cli();
+          touch_new = ICR0;
+          sei();
+          //start new measurement (clear ICF0, set pin to LOW)
+          SET(TIFR0,ICF0);
+          SET(TIMSK0,OCIE0B);
+          SET(DDRB,TOUCH_PIN);
+      } else if (TCNT0 < TOUCH_TIMEOUT){
+          CLR(state,MEAS_DONE);
+      }
 
 //      //check for touch timeout / process measurement
 //      if( (TCNT0 >= TOUCH_TIMEOUT)  ) {
@@ -171,9 +190,10 @@ void init(void){
     PUEB  = B(UART_RX_PIN);
 
     //setup external interrupt for falling edge
-    SET(EICRA,ISC01);
-    SET(EIMSK,INT0);
-    SET(EIFR,INTF0);
+//    SET(EICRA,ISC01);
+//    SET(EIMSK,INT0);
+//    SET(EIFR,INTF0);
+
 
     //set timer normal mode (0xFFFF top is convenient for UART)
     //disconnect output compare functionality
@@ -189,13 +209,16 @@ void init(void){
     touch_avg = TOUCH_AVG_INIT;
     //since all interrupts are disabled, cur_rx will be read as first config
     cur_rx = DEFAULT_CONFIGURATION;
-    cur_tx = 'A';
+    cur_tx = 0x55;
     tx_cnt = 0x00;
 
     //enable ovf interrupt, start the timer and let the magic begin
-    //SET(TIMSK0,OCIE0B);
+    OCR0B = 0xF000;
+    SET(TIMSK0,OCIE0B);
+    SET(TIMSK0,TOIE0);
     SET(TCCR0B,CS00);
-    //OCR0A  = 0xF000;
+
+
 
     sei();
 
@@ -215,10 +238,11 @@ ISR(INT0_vect){
     sei();
 
     //set first sample time
-    OCR0B = TCNT0+UART_HALF_OCR_INC;
+    OCR0B = TCNT0+UART_HALF_OCR_INC-UART_INC_OFFSET;
     //disable external interrupt, enable COMPA interrupt
     SET(EIFR,INTF0);
     CLR(EIMSK,INT0);
+    SET(TIFR0,OCF0B);
     SET(TIMSK0,OCIE0B);
 
 }
@@ -233,27 +257,29 @@ ISR(TIM0_COMPB_vect){
     sei();
 
     //update OCR0A (always to reduce jitter)
-    OCR0B = TCNT0 + UART_OCR_INC;
+    OCR0B += UART_OCR_INC;
+    tx_cnt++;
 
     //update RX and TX
     if(tx_cnt == UART_START){
         //don't store sample, set TX low
         CLR(PORTB,UART_TX_PIN);
-        //icrement tx counter
-        tx_cnt++;
-    } else if (tx_cnt < UART_STOP) {
+    } else if (tx_cnt < UART_STOP-1) {
         //store RX samle
-        COPY_BIT(PINB,UART_RX_PIN,cur_rx,0x00);
-        cur_rx = (cur_rx << 1);
+        COPY_BIT(PINB,UART_RX_PIN,cur_rx,7);
+        cur_rx = (cur_rx >> 1);
         //set TX output
         COPY_BIT(cur_tx,0,PORTB,UART_TX_PIN);
         cur_tx = (cur_tx >> 1);
-        //increment tx counter
-        tx_cnt++;
+    } else if (tx_cnt < UART_STOP) {
+        //store RX samle
+        COPY_BIT(PINB,UART_RX_PIN,cur_rx,7);
+        //set TX output
+        COPY_BIT(cur_tx,0,PORTB,UART_TX_PIN);
     } else {
         //don't sample, set TX high
         SET(PORTB,UART_TX_PIN);
-        //OCR0B += 40*UART_OCR_INC;
+        OCR0B += 10*UART_OCR_INC;
         //cur_rx done, check if message is for us
         if( 0 ) { //IS_SET(cur_rx,MSG_SLOT_TAKEN) && IS_SET(state,TAKEN_PASSED) ){
 
@@ -268,7 +294,7 @@ ISR(TIM0_COMPB_vect){
 
         } else {
             //if not for us pass on untouched
-            cur_tx = cur_rx;
+            cur_tx = (uint8_t)((touch_new >> 3) & 0x00FF); //IS_SET(PINB,TOUCH_PIN);//
         }
 
         //we are done, set tx_counter to 0
@@ -277,8 +303,8 @@ ISR(TIM0_COMPB_vect){
         //disable this interrupt until next RX byte
         //go to uart idle state (enable EXTI)
         CLR(TIMSK0,OCIE0B);
-        SET(EIFR,INTF0);
-        SET(EIMSK,INT0);
+//        SET(EIFR,INTF0);
+//        SET(EIMSK,INT0);
     }
 
 }
